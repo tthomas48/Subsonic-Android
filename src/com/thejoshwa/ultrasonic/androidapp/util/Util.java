@@ -342,7 +342,7 @@ public class Util extends DownloadActivity
 	public static String getTheme(Context context)
 	{
 		SharedPreferences preferences = getPreferences(context);
-		return preferences.getString(Constants.PREFERENCES_KEY_THEME, "dark");
+		return preferences.getString(Constants.PREFERENCES_KEY_THEME, "materiallight");
 	}
 
 	public static int getMaxBitRate(Context context)

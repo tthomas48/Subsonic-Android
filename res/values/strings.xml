@@ -302,6 +302,8 @@
     <string name="settings.testing_unlicensed">Connection is OK. Server unlicensed.</string>
     <string name="settings.theme_dark">Dark</string>
     <string name="settings.theme_light">Light</string>
+    <string name="settings.theme_material">Material</string>
+    <string name="settings.theme_material_light">Material Light</string>
     <string name="settings.theme_title">Theme</string>
     <string name="settings.use_folder_for_album_artist">Use Folders For Artist Name</string>
     <string name="settings.use_folder_for_album_artist_summary">Assume top-level folder is the name of the album artist</string>
