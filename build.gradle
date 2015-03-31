@@ -12,5 +12,5 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 22
-    buildToolsVersion "24.1.2"
+    buildToolsVersion "22.0.1"
 }
