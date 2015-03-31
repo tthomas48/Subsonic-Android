@@ -171,3 +171,4 @@ proguard_logs/
 .idea/tasks.xml
 .idea/*.iws
 .idea/dictionaries/*.xml
+.gradle
