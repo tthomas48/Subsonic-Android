@@ -1,0 +1,47 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 22
+    buildToolsVersion "21.1.0"
+
+    defaultConfig {
+        applicationId "com.thejoshwa.ultrasonic.androidapp"
+        minSdkVersion 22
+        targetSdkVersion 22
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://github.com/dahlgren/pulltorefresh-aar/raw/master"
+    }
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+
+    // This library handles authentication and authorization
+    compile 'com.spotify.sdk:spotify-auth:1.0.0-beta9@aar'
+    
+    // This library handles music playback
+    compile 'com.spotify.sdk:spotify-player:1.0.0-beta9@aar'
+
+    compile 'asia.ivity.android:drag-sort-listview:1.0'
+
+    compile 'net.simonvt.menudrawer:menudrawer:3.0.6'
+
+    compile 'com.github.chrisbanes.pulltorefresh:library:2.1.2-SNAPSHOT'
+
+}
