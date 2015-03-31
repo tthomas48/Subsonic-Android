@@ -99,6 +99,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 	private Looper mediaPlayerLooper;
 	private MediaPlayer mediaPlayer;
 	private MediaPlayer nextMediaPlayer;
+	private SpotifyMediaPlayer spotifyMediaPlayer;
 	private boolean nextSetup;
 	private final List<DownloadFile> downloadList = new ArrayList<DownloadFile>();
 	private final List<DownloadFile> backgroundDownloadList = new ArrayList<DownloadFile>();
