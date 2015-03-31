@@ -3,7 +3,7 @@
     android:id="@+id/statusbar"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:background="@color/background_color_dark"
+    android:background="#2196F3"
     android:orientation="horizontal" >
 
     <ImageView
@@ -29,7 +29,7 @@
 
             <TextView
                 android:id="@+id/trackname"
-                style="@android:style/TextAppearance.StatusBar.EventContent.Title"
+                style="@android:style/TextAppearance.Material.Notification.Title"
                 android:layout_width="0dip"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center|left"
@@ -51,7 +51,7 @@
 
 		<TextView
             android:id="@+id/artist"
-            style="@android:style/TextAppearance.StatusBar.EventContent"
+            style="@android:style/TextAppearance.Material.Notification"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="left"
@@ -61,7 +61,7 @@
 
         <TextView
             android:id="@+id/album"
-            style="@android:style/TextAppearance.StatusBar.EventContent"
+            style="@android:style/TextAppearance.Material.Notification"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="left"
