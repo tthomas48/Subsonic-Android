@@ -96,10 +96,8 @@ public class DownloadServiceImpl extends Service implements DownloadService
 	public static final String CMD_NEXT = "com.thejoshwa.ultrasonic.androidapp.CMD_NEXT";
 
 	private final IBinder binder = new SimpleServiceBinder<DownloadService>(this);
+	private PlayerService playerService;
 	private Looper mediaPlayerLooper;
-	private MediaPlayer mediaPlayer;
-	private MediaPlayer nextMediaPlayer;
-	private SpotifyMediaPlayer spotifyMediaPlayer;
 	private boolean nextSetup;
 	private final List<DownloadFile> downloadList = new ArrayList<DownloadFile>();
 	private final List<DownloadFile> backgroundDownloadList = new ArrayList<DownloadFile>();
@@ -111,11 +109,8 @@ public class DownloadServiceImpl extends Service implements DownloadService
 	private final LRUCache<MusicDirectory.Entry, DownloadFile> downloadFileCache = new LRUCache<MusicDirectory.Entry, DownloadFile>(100);
 	private final List<DownloadFile> cleanupCandidates = new ArrayList<DownloadFile>();
 	private final Scrobbler scrobbler = new Scrobbler();
-	private final JukeboxService jukeboxService = new JukeboxService(this);
 	private Notification notification = new Notification(R.drawable.ic_stat_ultrasonic, null, System.currentTimeMillis());
 
-	private DownloadFile currentPlaying;
-	private DownloadFile nextPlaying;
 	private DownloadFile currentDownloading;
 	private CancellableTask bufferTask;
 	private CancellableTask nextPlayingTask;
@@ -127,12 +122,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 	private String suggestedPlaylistName;
 	private PowerManager.WakeLock wakeLock;
 	private boolean keepScreenOn;
-	private int cachedPosition;
 
-	private static boolean equalizerAvailable;
-	private static boolean visualizerAvailable;
-	private EqualizerController equalizerController;
-	private VisualizerController visualizerController;
 	private boolean showVisualization;
 	private boolean jukeboxEnabled;
 	private PositionCache positionCache;
@@ -143,31 +133,6 @@ public class DownloadServiceImpl extends Service implements DownloadService
 	private boolean autoPlayStart;
 	private final static int lockScreenBitmapSize = 500;
 
-	static
-	{
-		try
-		{
-			EqualizerController.checkAvailable();
-			equalizerAvailable = true;
-		}
-		catch (Throwable t)
-		{
-			equalizerAvailable = false;
-		}
-	}
-
-	static
-	{
-		try
-		{
-			VisualizerController.checkAvailable();
-			visualizerAvailable = true;
-		}
-		catch (Throwable t)
-		{
-			visualizerAvailable = false;
-		}
-	}
 
 	@SuppressLint("NewApi")
 	@Override
@@ -184,36 +149,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 
 				Looper.prepare();
 
-				if (mediaPlayer != null)
-				{
-					mediaPlayer.release();
-				}
-
-				mediaPlayer = new MediaPlayer();
-				mediaPlayer.setWakeMode(DownloadServiceImpl.this, PowerManager.PARTIAL_WAKE_LOCK);
-
-				mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener()
-				{
-					@Override
-					public boolean onError(MediaPlayer mediaPlayer, int what, int more)
-					{
-						handleError(new Exception(String.format("MediaPlayer error: %d (%d)", what, more)));
-						return false;
-					}
-				});
-
-				try
-				{
-					Intent i = new Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
-					i.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mediaPlayer.getAudioSessionId());
-					i.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, getPackageName());
-					sendBroadcast(i);
-				}
-				catch (Throwable e)
-				{
-					// Froyo or lower
-				}
-
+				PlayerServiceFactory.init(DownloadServiceImpl.this);
 				mediaPlayerLooper = Looper.myLooper();
 				mediaPlayerHandler = new Handler(mediaPlayerLooper);
 				Looper.loop();
@@ -235,27 +171,6 @@ public class DownloadServiceImpl extends Service implements DownloadService
 
 		Intent notificationIntent = new Intent(this, DownloadActivity.class);
 		notification.contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
-		if (equalizerAvailable)
-		{
-			equalizerController = new EqualizerController(this, mediaPlayer);
-			if (!equalizerController.isAvailable())
-			{
-				equalizerController = null;
-			}
-			else
-			{
-				equalizerController.loadSettings();
-			}
-		}
-		if (visualizerAvailable)
-		{
-			visualizerController = new VisualizerController(mediaPlayer);
-			if (!visualizerController.isAvailable())
-			{
-				visualizerController = null;
-			}
-		}
 
 		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
 		wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, this.getClass().getName());
@@ -282,25 +197,6 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		{
 			instance = null;
 			lifecycleSupport.onDestroy();
-			mediaPlayer.release();
-
-			if (nextMediaPlayer != null)
-			{
-				nextMediaPlayer.release();
-			}
-
-			mediaPlayerLooper.quit();
-			shufflePlayBuffer.shutdown();
-
-			if (equalizerController != null)
-			{
-				equalizerController.release();
-			}
-
-			if (visualizerController != null)
-			{
-				visualizerController.release();
-			}
 
 			if (bufferTask != null)
 			{
@@ -314,10 +210,10 @@ public class DownloadServiceImpl extends Service implements DownloadService
 
 			notification = null;
 
-			Intent i = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
-			i.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mediaPlayer.getAudioSessionId());
-			i.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, getPackageName());
-			sendBroadcast(i);
+			mediaPlayerLooper.quit();
+			shufflePlayBuffer.shutdown();
+
+			PlayerServiceFactory.getPlayerService(this).destroy();
 
 			audioManager.unregisterRemoteControlClient(remoteControlClient);
 			clearRemoteControl();
@@ -391,7 +287,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 			revision++;
 		}
 
-		updateJukeboxPlaylist();
+		PlayerServiceFactory.getPlayerService(this).updatePlaylist();
 
 		if (shuffle) shuffle();
 
@@ -428,57 +324,11 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		lifecycleSupport.serializeDownloadQueue();
 	}
 
-	private void updateJukeboxPlaylist()
-	{
-		if (jukeboxEnabled)
-		{
-			jukeboxService.updatePlaylist();
-		}
-	}
-
 	@Override
 	public void restore(List<MusicDirectory.Entry> songs, int currentPlayingIndex, int currentPlayingPosition, boolean autoPlay, boolean newPlaylist)
 	{
 		download(songs, false, false, false, false, newPlaylist);
-
-		if (currentPlayingIndex != -1)
-		{
-			while (mediaPlayer == null)
-			{
-				Util.sleepQuietly(50L);
-			}
-
-			play(currentPlayingIndex, autoPlayStart);
-
-			if (currentPlaying != null)
-			{
-				if (autoPlay && jukeboxEnabled)
-				{
-					jukeboxService.skip(getCurrentPlayingIndex(), currentPlayingPosition / 1000);
-				}
-				else
-				{
-					if (currentPlaying.isCompleteFileAvailable())
-					{
-						doPlay(currentPlaying, currentPlayingPosition, autoPlay);
-					}
-				}
-			}
-
-			autoPlayStart = false;
-		}
-	}
-
-	@Override
-	public void stopJukeboxService()
-	{
-		jukeboxService.stopJukeboxService();
-	}
-
-	@Override
-	public void startJukeboxService()
-	{
-		jukeboxService.startJukeboxService();
+		PlayerServiceFactory.restore();
 	}
 
 	@Override
@@ -509,7 +359,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		}
 		revision++;
 		lifecycleSupport.serializeDownloadQueue();
-		updateJukeboxPlaylist();
+		PlayerServiceFactory.getPlayerService(this).updatePlaylist();
 		setNextPlaying();
 	}
 
@@ -610,7 +460,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		}
 
 		lifecycleSupport.serializeDownloadQueue();
-		updateJukeboxPlaylist();
+		PlayerServiceFactory.getPlayerService(this).updatePlaylist();
 	}
 
 	@Override
@@ -635,7 +485,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		{
 			lifecycleSupport.serializeDownloadQueue();
 		}
-		updateJukeboxPlaylist();
+		PlayerServiceFactory.getPlayerService(this).updatePlaylist();
 		setNextPlaying();
 	}
 
@@ -662,7 +512,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		backgroundDownloadList.remove(downloadFile);
 		revision++;
 		lifecycleSupport.serializeDownloadQueue();
-		updateJukeboxPlaylist();
+		PlayerServiceFactory.getPlayerService(this).updatePlaylist();
 		if (downloadFile == nextPlaying)
 		{
 			setNextPlaying();
@@ -860,63 +710,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		return backgroundDownloadList;
 	}
 
-	/**
-	 * Plays either the current song (resume) or the first/next one in queue.
-	 */
-	public synchronized void play()
-	{
-		int current = getCurrentPlayingIndex();
-		if (current == -1)
-		{
-			play(0);
-		}
-		else
-		{
-			play(current);
-		}
-	}
 
-	@Override
-	public synchronized void play(int index)
-	{
-		play(index, true);
-	}
-
-	private synchronized void play(int index, boolean start)
-	{
-		updateRemoteControl();
-
-		if (index < 0 || index >= size())
-		{
-			resetPlayback();
-		}
-		else
-		{
-			if (nextPlayingTask != null)
-			{
-				nextPlayingTask.cancel();
-				nextPlayingTask = null;
-			}
-
-			setCurrentPlaying(index);
-
-			if (start)
-			{
-				if (jukeboxEnabled)
-				{
-					jukeboxService.skip(getCurrentPlayingIndex(), 0);
-					setPlayerState(STARTED);
-				}
-				else
-				{
-					bufferAndPlay();
-				}
-			}
-
-			checkDownloads();
-			setNextPlaying();
-		}
-	}
 
 	private synchronized void resetPlayback()
 	{
@@ -925,23 +719,6 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		lifecycleSupport.serializeDownloadQueue();
 	}
 
-	private synchronized void playNext()
-	{
-		MediaPlayer tmp = mediaPlayer;
-		mediaPlayer = nextMediaPlayer;
-		nextMediaPlayer = tmp;
-		setCurrentPlaying(nextPlaying);
-		setPlayerState(PlayerState.STARTED);
-		setupHandlers(currentPlaying, false);
-		setNextPlaying();
-
-		// Proxy should not be being used here since the next player was already setup to play
-		if (proxy != null)
-		{
-			proxy.stop();
-			proxy = null;
-		}
-	}
 
 	/**
 	 * Plays or resumes the playback, depending on the current player state.
@@ -964,365 +741,6 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		}
 	}
 
-	@Override
-	public synchronized void seekTo(int position)
-	{
-		try
-		{
-			if (jukeboxEnabled)
-			{
-				jukeboxService.skip(getCurrentPlayingIndex(), position / 1000);
-			}
-			else
-			{
-				mediaPlayer.seekTo(position);
-				cachedPosition = position;
-
-				updateRemoteControl();
-			}
-		}
-		catch (Exception x)
-		{
-			handleError(x);
-		}
-	}
-
-	@Override
-	public synchronized void previous()
-	{
-		int index = getCurrentPlayingIndex();
-		if (index == -1)
-		{
-			return;
-		}
-
-		// Restart song if played more than five seconds.
-		if (getPlayerPosition() > 5000 || index == 0)
-		{
-			play(index);
-		}
-		else
-		{
-			play(index - 1);
-		}
-	}
-
-	@Override
-	public synchronized void next()
-	{
-		int index = getCurrentPlayingIndex();
-		if (index != -1)
-		{
-			play(index + 1);
-		}
-	}
-
-	private void onSongCompleted()
-	{
-		int index = getCurrentPlayingIndex();
-
-		if (currentPlaying != null)
-		{
-			final Entry song = currentPlaying.getSong();
-
-			if (song != null && song.getBookmarkPosition() > 0 && Util.getShouldClearBookmark(this))
-			{
-				MusicService musicService = MusicServiceFactory.getMusicService(DownloadServiceImpl.this);
-				try
-				{
-					musicService.deleteBookmark(song.getId(), DownloadServiceImpl.this, null);
-				}
-				catch (Exception ignored)
-				{
-
-				}
-			}
-		}
-
-		if (index != -1)
-		{
-			switch (getRepeatMode())
-			{
-				case OFF:
-					if (index + 1 < 0 || index + 1 >= size())
-					{
-						if (Util.getShouldClearPlaylist(this))
-						{
-							clear();
-						}
-
-						resetPlayback();
-						break;
-					}
-
-					play(index + 1);
-					break;
-				case ALL:
-					play((index + 1) % size());
-					break;
-				case SINGLE:
-					play(index);
-					break;
-				default:
-					break;
-			}
-		}
-	}
-
-	@Override
-	public synchronized void pause()
-	{
-		try
-		{
-			if (playerState == STARTED)
-			{
-				if (jukeboxEnabled)
-				{
-					jukeboxService.stop();
-				}
-				else
-				{
-					mediaPlayer.pause();
-				}
-				setPlayerState(PAUSED);
-			}
-		}
-		catch (Exception x)
-		{
-			handleError(x);
-		}
-	}
-
-	@Override
-	public synchronized void stop()
-	{
-		try
-		{
-			if (playerState == STARTED)
-			{
-				if (jukeboxEnabled)
-				{
-					jukeboxService.stop();
-				}
-				else
-				{
-					mediaPlayer.pause();
-				}
-				setPlayerState(STOPPED);
-			}
-			else if (playerState == PAUSED)
-			{
-				setPlayerState(STOPPED);
-			}
-		}
-		catch (Exception x)
-		{
-			handleError(x);
-		}
-	}
-
-	@Override
-	public synchronized void start()
-	{
-		try
-		{
-			if (jukeboxEnabled)
-			{
-				jukeboxService.start();
-			}
-			else
-			{
-				mediaPlayer.start();
-			}
-			setPlayerState(STARTED);
-		}
-		catch (Exception x)
-		{
-			handleError(x);
-		}
-	}
-
-	@Override
-	public synchronized void reset()
-	{
-		if (bufferTask != null)
-		{
-			bufferTask.cancel();
-		}
-		try
-		{
-			setPlayerState(IDLE);
-			mediaPlayer.setOnErrorListener(null);
-			mediaPlayer.setOnCompletionListener(null);
-			mediaPlayer.reset();
-		}
-		catch (Exception x)
-		{
-			handleError(x);
-		}
-	}
-
-	@Override
-	public synchronized int getPlayerPosition()
-	{
-		try
-		{
-			if (playerState == IDLE || playerState == DOWNLOADING || playerState == PREPARING)
-			{
-				return 0;
-			}
-
-			return jukeboxEnabled ? jukeboxService.getPositionSeconds() * 1000 : cachedPosition;
-		}
-		catch (Exception x)
-		{
-			handleError(x);
-			return 0;
-		}
-	}
-
-	@Override
-	public synchronized int getPlayerDuration()
-	{
-		if (currentPlaying != null)
-		{
-			Integer duration = currentPlaying.getSong().getDuration();
-			if (duration != null)
-			{
-				return duration * 1000;
-			}
-		}
-		if (playerState != IDLE && playerState != DOWNLOADING && playerState != PlayerState.PREPARING)
-		{
-			try
-			{
-				return mediaPlayer.getDuration();
-			}
-			catch (Exception x)
-			{
-				handleError(x);
-			}
-		}
-		return 0;
-	}
-
-	@Override
-	public PlayerState getPlayerState()
-	{
-		return playerState;
-	}
-
-	synchronized void setPlayerState(PlayerState playerState)
-	{
-		Log.i(TAG, String.format("%s -> %s (%s)", this.playerState.name(), playerState.name(), currentPlaying));
-
-		this.playerState = playerState;
-
-		if (this.playerState == PAUSED)
-		{
-			lifecycleSupport.serializeDownloadQueue();
-		}
-
-		if (this.playerState == PlayerState.STARTED)
-		{
-			Util.requestAudioFocus(this);
-		}
-
-		boolean showWhenPaused = (this.playerState != PlayerState.STOPPED && Util.isNotificationAlwaysEnabled(this));
-		boolean show = this.playerState == PlayerState.STARTED || showWhenPaused;
-
-		Util.broadcastPlaybackStatusChange(this, this.playerState);
-		Util.broadcastA2dpPlayStatusChange(this, this.playerState, instance);
-
-		if (this.playerState == PlayerState.STARTED || this.playerState == PlayerState.PAUSED)
-		{
-			// Set remote control
-			updateRemoteControl();
-		}
-
-		// Update widget
-		UltraSonicAppWidgetProvider4x1.getInstance().notifyChange(this, this, this.playerState == PlayerState.STARTED, false);
-		UltraSonicAppWidgetProvider4x2.getInstance().notifyChange(this, this, this.playerState == PlayerState.STARTED, true);
-		UltraSonicAppWidgetProvider4x3.getInstance().notifyChange(this, this, this.playerState == PlayerState.STARTED, false);
-		UltraSonicAppWidgetProvider4x4.getInstance().notifyChange(this, this, this.playerState == PlayerState.STARTED, false);
-		SubsonicTabActivity tabInstance = SubsonicTabActivity.getInstance();
-
-		Entry song = null;
-
-		if (currentPlaying != null)
-		{
-			song = currentPlaying.getSong();
-		}
-
-		if (show)
-		{
-			if (tabInstance != null)
-			{
-				if (SubsonicTabActivity.currentSong != song)
-				{
-					int size = Util.getNotificationImageSize(this);
-					tabInstance.nowPlayingImage = FileUtil.getAlbumArtBitmap(this, song, size, true);
-				}
-
-				// Only update notification is player state is one that will change the icon
-				if (this.playerState == PlayerState.STARTED || this.playerState == PlayerState.PAUSED)
-				{
-					tabInstance.showNotification(handler, song, this, this.notification, this.playerState);
-					tabInstance.showNowPlaying();
-				}
-			}
-		}
-		else
-		{
-			if (tabInstance != null)
-			{
-				tabInstance.nowPlayingImage = null;
-				tabInstance.hidePlayingNotification(handler, this);
-				tabInstance.hideNowPlaying();
-			}
-		}
-
-		if (this.playerState == STARTED)
-		{
-			scrobbler.scrobble(this, currentPlaying, false);
-		}
-		else if (this.playerState == COMPLETED)
-		{
-			scrobbler.scrobble(this, currentPlaying, true);
-		}
-
-		if (playerState == STARTED && positionCache == null)
-		{
-			positionCache = new PositionCache();
-			Thread thread = new Thread(positionCache);
-			thread.start();
-		}
-		else if (playerState != STARTED && positionCache != null)
-		{
-			positionCache.stop();
-			positionCache = null;
-		}
-	}
-
-	private void setPlayerStateCompleted()
-	{
-		Log.i(TAG, String.format("%s -> %s (%s)", this.playerState.name(), PlayerState.COMPLETED, currentPlaying));
-		this.playerState = PlayerState.COMPLETED;
-
-		if (positionCache != null)
-		{
-			positionCache.stop();
-			positionCache = null;
-		}
-
-		scrobbler.scrobble(this, currentPlaying, true);
-	}
-
-	private synchronized void setNextPlayerState(PlayerState playerState)
-	{
-		Log.i(TAG, String.format("Next: %s -> %s (%s)", this.nextPlayerState.name(), playerState.name(), nextPlaying));
-		this.nextPlayerState = playerState;
-	}
 
 	@Override
 	public void setSuggestedPlaylistName(String name)
@@ -1816,14 +1234,12 @@ public class DownloadServiceImpl extends Service implements DownloadService
 						if (!nextSetup)
 						{
 							playNext();
-						}
-						else
+						} else
 						{
 							nextSetup = false;
 							playNext();
 						}
-					}
-					else
+					} else
 					{
 						onSongCompleted();
 					}
@@ -1841,8 +1257,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 						downloadFile.setPlaying(false);
 						doPlay(downloadFile, pos, true);
 						downloadFile.setPlaying(true);
-					}
-					else
+					} else
 					{
 						Log.i(TAG, String.format("Requesting restart from %d of %d", pos, duration));
 						reset();
@@ -1857,10 +1272,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 	@Override
 	public void setVolume(float volume)
 	{
-		if (mediaPlayer != null)
-		{
-			mediaPlayer.setVolume(volume, volume);
-		}
+		PlayerServiceFactory.getPlayerService(this).setVolume(volume);
 	}
 
 	@Override
@@ -1882,9 +1294,9 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		DownloadFile movedSong = list.remove(from);
 		list.add(to, movedSong);
 
-		if (jukeboxEnabled && mainList)
+		if (mainList)
 		{
-			updateJukeboxPlaylist();
+			PlayerServiceFactory.getPlayerService(this).updatePlaylist();
 		}
 		else if (mainList && (movedSong == nextPlaying || (currentPlayingIndex + 1) == to))
 		{
@@ -1893,28 +1305,6 @@ public class DownloadServiceImpl extends Service implements DownloadService
 		}
 	}
 
-	private void handleError(Exception x)
-	{
-		Log.w(TAG, String.format("Media player error: %s", x), x);
-
-		try
-		{
-			mediaPlayer.reset();
-		}
-		catch (Exception ex)
-		{
-			Log.w(TAG, String.format("Exception encountered when resetting media player: %s", ex), ex);
-		}
-
-		setPlayerState(IDLE);
-	}
-
-	private void handleErrorNext(Exception x)
-	{
-		Log.w(TAG, String.format("Next Media player error: %s", x), x);
-		nextMediaPlayer.reset();
-		setNextPlayerState(IDLE);
-	}
 
 	protected synchronized void checkDownloads()
 	{
@@ -2066,7 +1456,7 @@ public class DownloadServiceImpl extends Service implements DownloadService
 
 		if (revisionBefore != revision)
 		{
-			updateJukeboxPlaylist();
+			PlayerServiceFactory.getPlayerService(this).updatePlaylist();
 		}
 
 		if (wasEmpty && !downloadList.isEmpty())

@@ -27,7 +27,7 @@
         a:xlargeScreens="true"/>
 
     <application
-        a:allowBackup="false"
+        a:allowBackup="true"
         a:icon="@drawable/ic_launcher"
         a:label="@string/common.appname">
         <activity
@@ -38,6 +38,8 @@
             <intent-filter>
                 <action a:name="android.intent.action.MAIN"/>
                 <category a:name="android.intent.category.LAUNCHER"/>
+                <category a:name="android.intent.category.BROWSABLE"/>
+                <data a:scheme="ultrasonic" />
             </intent-filter>
         </activity>
         <activity
@@ -112,6 +114,9 @@
                 a:name="android.app.searchable"
                 a:resource="@xml/searchable"/>
         </activity>
+        <activity
+        a:name="com.spotify.sdk.android.authentication.LoginActivity"
+        a:theme="@android:style/Theme.Translucent.NoTitleBar"/>
 
         <service
             a:name=".service.DownloadServiceImpl"

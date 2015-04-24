@@ -23,6 +23,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -33,6 +34,10 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.spotify.sdk.android.authentication.AuthenticationClient;
+import com.spotify.sdk.android.authentication.AuthenticationRequest;
+import com.spotify.sdk.android.authentication.AuthenticationResponse;
+import com.spotify.sdk.android.player.ConnectionStateCallback;
 import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
@@ -45,8 +50,12 @@ import java.util.Collections;
 
 import static java.util.Arrays.asList;
 
-public class MainActivity extends SubsonicTabActivity
+public class MainActivity extends SubsonicTabActivity implements ConnectionStateCallback
 {
+
+	private static final String SPOTIFY_CLIENT_ID = "60b8a1d2d1aa4484b30512175352c33b";
+	private static final String SPOTIFY_REDIRECT_URI = "ultrasonic://callback";
+	private static final int SPOTIFY_REQUEST_CODE = 1337;
 
 	private static final int MENU_GROUP_SERVER = 10;
 	private static final int MENU_ITEM_OFFLINE = 111;
@@ -94,6 +103,7 @@ public class MainActivity extends SubsonicTabActivity
 		setContentView(R.layout.main);
 
 		loadSettings();
+		loginSpotify();
 
 		final View buttons = LayoutInflater.from(this).inflate(R.layout.main_buttons, null);
 		final View serverButton = buttons.findViewById(R.id.main_select_server);
@@ -532,5 +542,46 @@ public class MainActivity extends SubsonicTabActivity
 		final Intent intent = new Intent(this, SelectAlbumActivity.class);
 		intent.putExtra(Constants.INTENT_EXTRA_NAME_VIDEOS, 1);
 		startActivityForResultWithoutTransition(this, intent);
+	}
+
+	private void loginSpotify()
+	{
+		AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(SPOTIFY_CLIENT_ID,
+				AuthenticationResponse.Type.TOKEN,
+				SPOTIFY_REDIRECT_URI);
+		builder.setScopes(new String[]{"user-read-private", "streaming"});
+		AuthenticationRequest request = builder.build();
+
+		AuthenticationClient.openLoginActivity(this, SPOTIFY_REQUEST_CODE, request);
+	}
+
+	@Override
+	public void onLoggedIn()
+	{
+		Log.d("MainActivity", "User logged in");
+	}
+
+	@Override
+	public void onLoggedOut()
+	{
+		Log.d("MainActivity", "User logged out");
+	}
+
+	@Override
+	public void onLoginFailed(Throwable throwable)
+	{
+		Log.d("MainActivity", "Login failed");
+	}
+
+	@Override
+	public void onTemporaryError()
+	{
+		Log.d("MainActivity", "Temporary error occurred");
+	}
+
+	@Override
+	public void onConnectionMessage(String message)
+	{
+		Log.d("MainActivity", "Received connection message: " + message);
 	}
 }
