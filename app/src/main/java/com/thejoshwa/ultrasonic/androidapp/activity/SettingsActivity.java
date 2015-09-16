@@ -41,8 +41,7 @@ import android.widget.TextView;
 
 import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.provider.SearchSuggestionProvider;
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicService;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicServiceFactory;
 import com.thejoshwa.ultrasonic.androidapp.util.Constants;
@@ -663,8 +662,7 @@ public class SettingsActivity extends PreferenceResultActivity implements Shared
 			}
 
 			// Clear download queue.
-			DownloadService downloadService = DownloadServiceImpl.getInstance();
-			downloadService.clear();
+			MediaPlayer.getInstance().clear();
 		}
 	}
 

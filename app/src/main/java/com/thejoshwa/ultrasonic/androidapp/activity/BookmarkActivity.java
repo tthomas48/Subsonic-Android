@@ -34,6 +34,7 @@ import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory.Entry;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadFile;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicService;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicServiceFactory;
 import com.thejoshwa.ultrasonic.androidapp.util.Constants;
@@ -206,7 +207,7 @@ public class BookmarkActivity extends SubsonicTabActivity
 		if (!getSelectedSongs(albumListView).isEmpty())
 		{
 			int position = songs.get(0).getBookmarkPosition();
-			getDownloadService().restore(songs, 0, position, true, true);
+			MediaPlayer.getInstance().restore(songs, 0, position, true, true);
 			selectAll(false, false);
 		}
 	}

@@ -5,6 +5,7 @@ import android.util.Log;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadFile;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 
 import org.apache.http.HttpRequest;
 import org.apache.http.message.BasicHttpRequest;
@@ -188,7 +189,10 @@ public class StreamProxy implements Runnable
 		public void run()
 		{
 			Log.i(TAG, "Streaming song in background");
-			DownloadFile downloadFile = downloadService.getCurrentPlaying();
+			DownloadFile downloadFile = MediaPlayer.getInstance().getCurrentPlaying();
+			if (downloadFile == null) {
+				return;
+			}
 			MusicDirectory.Entry song = downloadFile.getSong();
 			long fileSize = downloadFile.getBitRate() * ((song.getDuration() != null) ? song.getDuration() : 0) * 1000 / 8;
 			Log.i(TAG, String.format("Streaming fileSize: %d", fileSize));

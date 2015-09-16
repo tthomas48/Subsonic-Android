@@ -17,7 +17,7 @@
 
     <uses-sdk
         a:minSdkVersion="14"
-        a:targetSdkVersion="21"/>
+        a:targetSdkVersion="22"/>
 
     <supports-screens
         a:anyDensity="true"
@@ -38,6 +38,8 @@
             <intent-filter>
                 <action a:name="android.intent.action.MAIN"/>
                 <category a:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
                 <category a:name="android.intent.category.BROWSABLE"/>
                 <data a:scheme="ultrasonic" />
             </intent-filter>
@@ -122,6 +124,12 @@
             a:name=".service.DownloadServiceImpl"
             a:label="UltraSonic Download Service"
             a:exported="false">
+        </service>
+
+        <service
+            a:name=".service.MediaPlayer"
+            a:label="UltraSonic Media Player"
+            a:exported="false">
             <intent-filter>
                 <action a:name="com.thejoshwa.ultrasonic.androidapp.CMD_TOGGLEPAUSE"/>
                 <action a:name="com.thejoshwa.ultrasonic.androidapp.CMD_PLAY"/>
@@ -131,6 +139,7 @@
                 <action a:name="com.thejoshwa.ultrasonic.androidapp.CMD_STOP"/>
             </intent-filter>
         </service>
+
 
         <receiver a:name=".receiver.MediaButtonIntentReceiver">
             <intent-filter a:priority="2147483647">

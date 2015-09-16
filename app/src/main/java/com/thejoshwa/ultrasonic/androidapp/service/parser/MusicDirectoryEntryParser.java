@@ -39,7 +39,10 @@ public class MusicDirectoryEntryParser extends AbstractParser
 		MusicDirectory.Entry entry = new MusicDirectory.Entry();
 		entry.setId(get("id"));
 		entry.setParent(get("parent"));
-		entry.setTitle(isAlbum ? get("name") : get("title"));
+		entry.setTitle(isAlbum ? get("album") : get("title"));
+		if (entry.getTitle() == null || entry.getTitle().trim().equals("")) {
+			entry.setTitle(get("name"));
+		}
 		entry.setIsDirectory(getBoolean("isDir") || isAlbum);
 		entry.setCoverArt(get("coverArt"));
 		entry.setArtist(get("artist"));

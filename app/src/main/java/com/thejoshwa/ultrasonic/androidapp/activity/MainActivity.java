@@ -37,10 +37,13 @@ import android.widget.TextView;
 import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
 import com.spotify.sdk.android.authentication.AuthenticationResponse;
+import com.spotify.sdk.android.player.Config;
 import com.spotify.sdk.android.player.ConnectionStateCallback;
 import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
+import com.thejoshwa.ultrasonic.androidapp.service.SpotifyPlayerService;
 import com.thejoshwa.ultrasonic.androidapp.util.Constants;
 import com.thejoshwa.ultrasonic.androidapp.util.FileUtil;
 import com.thejoshwa.ultrasonic.androidapp.util.MergeAdapter;
@@ -87,7 +90,12 @@ public class MainActivity extends SubsonicTabActivity implements ConnectionState
 
 			if (getDownloadService() != null)
 			{
-				getDownloadService().stopJukeboxService();
+				MediaPlayer.getInstance().setJukeboxEnabled(false);
+			}
+
+			if (getMediaPlayer() != null)
+			{
+				MediaPlayer.getInstance().shutdown();
 			}
 
 			if (getImageLoader() != null)
@@ -110,7 +118,6 @@ public class MainActivity extends SubsonicTabActivity implements ConnectionState
 		final TextView serverTextView = (TextView) serverButton.findViewById(R.id.main_select_server_2);
 		final View musicTitle = buttons.findViewById(R.id.main_music);
 		final View artistsButton = buttons.findViewById(R.id.main_artists_button);
-		final View albumsButton = buttons.findViewById(R.id.main_albums_button);
 		final View genresButton = buttons.findViewById(R.id.main_genres_button);
 		final View videosTitle = buttons.findViewById(R.id.main_videos_title);
 		final View songsTitle = buttons.findViewById(R.id.main_songs);
@@ -157,7 +164,7 @@ public class MainActivity extends SubsonicTabActivity implements ConnectionState
 		if (!Util.isOffline(this))
 		{
 			adapter.addView(musicTitle, false);
-			adapter.addViews(asList(artistsButton, albumsButton, genresButton), true);
+			adapter.addViews(asList(artistsButton, genresButton), true);
 			adapter.addView(songsTitle, false);
 			adapter.addViews(asList(randomSongsButton, songsStarredButton), true);
 			adapter.addView(albumsTitle, false);
@@ -228,10 +235,6 @@ public class MainActivity extends SubsonicTabActivity implements ConnectionState
 				else if (view == artistsButton)
 				{
 					showArtists();
-				}
-				else if (view == albumsButton)
-				{
-					showAlbumList(Constants.ALPHABETICAL_BY_NAME, R.string.main_albums_title);
 				}
 				else if (view == randomSongsButton)
 				{
@@ -473,7 +476,7 @@ public class MainActivity extends SubsonicTabActivity implements ConnectionState
 
 		if (service != null)
 		{
-			service.setJukeboxEnabled(Util.getJukeboxEnabled(this, instance));
+			MediaPlayer.getInstance().setJukeboxEnabled(Util.getJukeboxEnabled(this, instance));
 		}
 	}
 
@@ -546,6 +549,9 @@ public class MainActivity extends SubsonicTabActivity implements ConnectionState
 
 	private void loginSpotify()
 	{
+		if (SpotifyPlayerService.getPlayerConfig() != null) {
+			return;
+		}
 		AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(SPOTIFY_CLIENT_ID,
 				AuthenticationResponse.Type.TOKEN,
 				SPOTIFY_REDIRECT_URI);
@@ -583,5 +589,19 @@ public class MainActivity extends SubsonicTabActivity implements ConnectionState
 	public void onConnectionMessage(String message)
 	{
 		Log.d("MainActivity", "Received connection message: " + message);
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		super.onActivityResult(requestCode, resultCode, intent);
+
+		// Check if result comes from the correct activity
+		if (requestCode == SPOTIFY_REQUEST_CODE) {
+			AuthenticationResponse response = AuthenticationClient.getResponse(resultCode, intent);
+			if (response.getType() == AuthenticationResponse.Type.TOKEN) {
+				Config playerConfig = new Config(this, response.getAccessToken(), SPOTIFY_CLIENT_ID);
+				SpotifyPlayerService.setPlayerConfig(playerConfig);
+			}
+		}
 	}
 }

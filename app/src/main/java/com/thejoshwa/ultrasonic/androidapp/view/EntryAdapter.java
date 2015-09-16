@@ -127,6 +127,7 @@ public class EntryAdapter extends ArrayAdapter<Entry>
 
 	public static class AlbumViewHolder
 	{
+		View background;
 		TextView artist;
 		ImageView cover_art;
 		ImageView star;

@@ -27,8 +27,7 @@ import android.view.View;
 
 import com.thejoshwa.ultrasonic.androidapp.audiofx.VisualizerController;
 import com.thejoshwa.ultrasonic.androidapp.domain.PlayerState;
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 
 /**
  * A simple class that draws waveform data received from a
@@ -99,8 +98,8 @@ public class VisualizerView extends View
 
 	private static Visualizer getVizualizer()
 	{
-		DownloadService downloadService = DownloadServiceImpl.getInstance();
-		VisualizerController visualizerController = downloadService == null ? null : downloadService.getVisualizerController();
+		MediaPlayer mediaPlayer = MediaPlayer.getInstance();
+		VisualizerController visualizerController = mediaPlayer == null ? null : mediaPlayer.getVisualizerController();
 		return visualizerController == null ? null : visualizerController.getVisualizer();
 	}
 
@@ -120,8 +119,8 @@ public class VisualizerView extends View
 			return;
 		}
 
-		DownloadService downloadService = DownloadServiceImpl.getInstance();
-		if (downloadService != null && downloadService.getPlayerState() != PlayerState.STARTED)
+		MediaPlayer mediaPlayer = MediaPlayer.getInstance();
+		if (mediaPlayer != null && mediaPlayer.getPlayerState() != PlayerState.STARTED)
 		{
 			return;
 		}

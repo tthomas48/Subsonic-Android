@@ -19,8 +19,10 @@
 package com.thejoshwa.ultrasonic.androidapp.service.parser;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.thejoshwa.ultrasonic.androidapp.domain.JukeboxStatus;
+import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory;
 
 import org.xmlpull.v1.XmlPullParser;
 
@@ -29,7 +31,7 @@ import java.io.Reader;
 /**
  * @author Sindre Mehus
  */
-public class JukeboxStatusParser extends AbstractParser
+public class JukeboxStatusParser extends MusicDirectoryEntryParser
 {
 
 	public JukeboxStatusParser(Context context)
@@ -43,6 +45,7 @@ public class JukeboxStatusParser extends AbstractParser
 		init(reader);
 
 		JukeboxStatus jukeboxStatus = new JukeboxStatus();
+		MusicDirectory directory = new MusicDirectory();
 		int eventType;
 		do
 		{
@@ -57,12 +60,18 @@ public class JukeboxStatusParser extends AbstractParser
 					jukeboxStatus.setPlaying(getBoolean("playing"));
 					jukeboxStatus.setGain(getFloat("gain"));
 				}
+				else if ("entry".equals(name)) {
+					directory.addChild(parseEntry("", false, 0));
+				}
 				else if ("error".equals(name))
 				{
 					handleError();
 				}
 			}
 		} while (eventType != XmlPullParser.END_DOCUMENT);
+
+		Log.e("JUKEBOXSTATUSPARSER", "Found this many files " + directory.getChildren());
+		jukeboxStatus.setPlaylist(directory);
 
 		validate();
 

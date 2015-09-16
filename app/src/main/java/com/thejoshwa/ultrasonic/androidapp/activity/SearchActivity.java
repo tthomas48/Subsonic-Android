@@ -38,6 +38,7 @@ import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory.Entry;
 import com.thejoshwa.ultrasonic.androidapp.domain.SearchCriteria;
 import com.thejoshwa.ultrasonic.androidapp.domain.SearchResult;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicService;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicServiceFactory;
 import com.thejoshwa.ultrasonic.androidapp.util.BackgroundTask;
@@ -260,29 +261,29 @@ public class SearchActivity extends SubsonicTabActivity
 		switch (menuItem.getItemId())
 		{
 			case R.id.album_menu_play_now:
-				downloadRecursively(id, false, false, true, false, false, false, false, false);
+				enqueueRecursively(id, false, false, true, false, false, false, false, false);
 				break;
 			case R.id.album_menu_play_next:
-				downloadRecursively(id, false, true, false, true, false, true, false, false);
+				enqueueRecursively(id, false, true, false, true, false, true, false, false);
 				break;
 			case R.id.album_menu_play_last:
-				downloadRecursively(id, false, true, false, false, false, false, false, false);
+				enqueueRecursively(id, false, true, false, false, false, false, false, false);
 				break;
 			case R.id.album_menu_pin:
-				downloadRecursively(id, true, true, false, false, false, false, false, false);
+				enqueueRecursively(id, true, true, false, false, false, false, false, false);
 				break;
 			case R.id.album_menu_unpin:
-				downloadRecursively(id, false, false, false, false, false, false, true, false);
+				enqueueRecursively(id, false, false, false, false, false, false, true, false);
 				break;
 			case R.id.album_menu_download:
-				downloadRecursively(id, false, false, false, false, true, false, false, false);
+				enqueueRecursively(id, false, false, false, false, true, false, false, false);
 				break;
 			case R.id.song_menu_play_now:
 				if (entry != null)
 				{
 					songs = new ArrayList<MusicDirectory.Entry>(1);
 					songs.add(entry);
-					download(false, false, true, false, false, songs);
+					MediaPlayer.getInstance().enqueue(songs, false, false, true, false, false);
 				}
 				break;
 			case R.id.song_menu_play_next:
@@ -290,7 +291,7 @@ public class SearchActivity extends SubsonicTabActivity
 				{
 					songs = new ArrayList<MusicDirectory.Entry>(1);
 					songs.add(entry);
-					download(true, false, false, true, false, songs);
+					MediaPlayer.getInstance().enqueue(songs, true, false, false, true, false);
 				}
 				break;
 			case R.id.song_menu_play_last:
@@ -298,7 +299,7 @@ public class SearchActivity extends SubsonicTabActivity
 				{
 					songs = new ArrayList<MusicDirectory.Entry>(1);
 					songs.add(entry);
-					download(true, false, false, false, false, songs);
+					MediaPlayer.getInstance().enqueue(songs, true, false, false, false, false);
 				}
 				break;
 			case R.id.song_menu_pin:
@@ -509,18 +510,19 @@ public class SearchActivity extends SubsonicTabActivity
 	private void onSongSelected(MusicDirectory.Entry song, boolean save, boolean append, boolean autoplay, boolean playNext)
 	{
 		DownloadService downloadService = getDownloadService();
-		if (downloadService != null)
+		MediaPlayer mediaPlayer = MediaPlayer.getInstance();
+		if (downloadService != null && mediaPlayer != null)
 		{
 			if (!append && !playNext)
 			{
-				downloadService.clear();
+				mediaPlayer.clear();
 			}
 
-			downloadService.download(Collections.singletonList(song), save, false, playNext, false, false);
+			mediaPlayer.enqueue(Collections.singletonList(song), save, false, playNext, false, false);
 
 			if (autoplay)
 			{
-				downloadService.play(downloadService.size() - 1);
+				mediaPlayer.play(mediaPlayer.size() - 1);
 			}
 
 			Util.toast(SearchActivity.this, getResources().getQuantityString(R.plurals.select_album_n_songs_added, 1, 1));

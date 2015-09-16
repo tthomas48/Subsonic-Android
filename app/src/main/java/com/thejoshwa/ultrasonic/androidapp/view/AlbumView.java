@@ -30,6 +30,7 @@ import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicService;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicServiceFactory;
+import com.thejoshwa.ultrasonic.androidapp.util.ImageHolder;
 import com.thejoshwa.ultrasonic.androidapp.util.ImageLoader;
 import com.thejoshwa.ultrasonic.androidapp.util.Util;
 
@@ -48,6 +49,7 @@ public class AlbumView extends UpdateView
 	private Context context;
 	private MusicDirectory.Entry entry;
 	private EntryAdapter.AlbumViewHolder viewHolder;
+	private ImageHolder imageHolder;
 	private ImageLoader imageLoader;
 
 	public AlbumView(Context context, ImageLoader imageLoader)
@@ -75,11 +77,18 @@ public class AlbumView extends UpdateView
 	{
 		LayoutInflater.from(context).inflate(R.layout.album_list_item, this, true);
 		viewHolder = new EntryAdapter.AlbumViewHolder();
+		viewHolder.background = findViewById(R.id.album_background);
 		viewHolder.title = (TextView) findViewById(R.id.album_title);
 		viewHolder.artist = (TextView) findViewById(R.id.album_artist);
 		viewHolder.cover_art = (ImageView) findViewById(R.id.album_coverart);
 		viewHolder.star = (ImageView) findViewById(R.id.album_star);
 		setTag(viewHolder);
+
+		imageHolder = new ImageHolder();
+		imageHolder.addImageView(viewHolder.cover_art);
+		imageHolder.addBackground(viewHolder.background);
+		imageHolder.addTitleText(viewHolder.title);
+		imageHolder.addBodyText(viewHolder.artist);
 	}
 
 	public void setViewHolder(EntryAdapter.AlbumViewHolder viewHolder)
@@ -97,8 +106,9 @@ public class AlbumView extends UpdateView
 	public void setAlbum(final MusicDirectory.Entry album)
 	{
 		viewHolder.cover_art.setTag(album);
-		imageLoader.loadImage(viewHolder.cover_art, album, false, 0, false, true);
+		imageLoader.loadImage(imageHolder, album, false, 0, false, true);
 		this.entry = album;
+
 
 		String title = album.getTitle();
 		String artist = album.getArtist();

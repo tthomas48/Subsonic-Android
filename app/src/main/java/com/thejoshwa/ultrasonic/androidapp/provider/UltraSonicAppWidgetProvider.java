@@ -19,6 +19,7 @@ import com.thejoshwa.ultrasonic.androidapp.activity.MainActivity;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.util.FileUtil;
 
 public class UltraSonicAppWidgetProvider extends AppWidgetProvider
@@ -69,7 +70,7 @@ public class UltraSonicAppWidgetProvider extends AppWidgetProvider
 	/**
 	 * Handle a change notification coming over from {@link DownloadService}
 	 */
-	public void notifyChange(Context context, DownloadService service, boolean playing, boolean setAlbum)
+	public void notifyChange(Context context, MediaPlayer service, boolean playing, boolean setAlbum)
 	{
 		if (hasInstances(context))
 		{
@@ -96,7 +97,7 @@ public class UltraSonicAppWidgetProvider extends AppWidgetProvider
 	/**
 	 * Update all active widget instances by pushing changes
 	 */
-	private void performUpdate(Context context, DownloadService service, int[] appWidgetIds, boolean playing, boolean setAlbum)
+	private void performUpdate(Context context, MediaPlayer service, int[] appWidgetIds, boolean playing, boolean setAlbum)
 	{
 		final Resources res = context.getResources();
 		final RemoteViews views = new RemoteViews(context.getPackageName(), this.layoutId);

@@ -63,8 +63,8 @@ import com.thejoshwa.ultrasonic.androidapp.domain.SearchResult;
 import com.thejoshwa.ultrasonic.androidapp.domain.Version;
 import com.thejoshwa.ultrasonic.androidapp.receiver.MediaButtonIntentReceiver;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadFile;
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 
 import org.apache.http.HttpEntity;
 
@@ -377,7 +377,7 @@ public class Util extends DownloadActivity
 
 	public static String getRestUrl(Context context, String method)
 	{
-		boolean isJukeboxEnabled = DownloadServiceImpl.getInstance() != null && DownloadServiceImpl.getInstance().isJukeboxEnabled();
+		boolean isJukeboxEnabled = MediaPlayer.getInstance() != null && MediaPlayer.getInstance().isJukeboxEnabled();
 		return getRestUrl(context, method, isJukeboxEnabled);
 	}
 
@@ -994,9 +994,9 @@ public class Util extends DownloadActivity
 		context.sendBroadcast(intent);
 	}
 
-	public static void broadcastA2dpMetaDataChange(Context context, DownloadService downloadService)
+	public static void broadcastA2dpMetaDataChange(MediaPlayer mediaPlayer)
 	{
-		if (!Util.getShouldSendBluetoothNotifications(context))
+		if (!Util.getShouldSendBluetoothNotifications(mediaPlayer))
 		{
 			return;
 		}
@@ -1004,9 +1004,9 @@ public class Util extends DownloadActivity
 		Entry song = null;
 		Intent avrcpIntent = new Intent(CM_AVRCP_METADATA_CHANGED);
 
-		if (downloadService != null)
+		if (mediaPlayer != null)
 		{
-			DownloadFile entry = downloadService.getCurrentPlaying();
+			DownloadFile entry =mediaPlayer.getCurrentPlaying();
 
 			if (entry != null)
 			{
@@ -1014,7 +1014,7 @@ public class Util extends DownloadActivity
 			}
 		}
 
-		if (downloadService == null || song == null)
+		if (mediaPlayer == null || song == null)
 		{
 			avrcpIntent.putExtra("track", "");
 			avrcpIntent.putExtra("track_name", "");
@@ -1025,7 +1025,7 @@ public class Util extends DownloadActivity
 			avrcpIntent.putExtra("album_artist", "");
 			avrcpIntent.putExtra("album_artist_name", "");
 
-			if (Util.getShouldSendBluetoothAlbumArt(context))
+			if (Util.getShouldSendBluetoothAlbumArt(mediaPlayer))
 			{
 				avrcpIntent.putExtra("coverart", (Parcelable) null);
 				avrcpIntent.putExtra("cover", (Parcelable) null);
@@ -1047,9 +1047,9 @@ public class Util extends DownloadActivity
 			String artist = song.getArtist();
 			String album = song.getAlbum();
 			Integer duration = song.getDuration();
-			Integer listSize = downloadService.getDownloads().size();
-			Integer id = downloadService.getCurrentPlayingIndex() + 1;
-			Integer playerPosition = downloadService.getPlayerPosition();
+			Integer listSize = DownloadServiceImpl.getInstance().getDownloads().size();
+			Integer id = MediaPlayer.getInstance().getCurrentPlayingIndex() + 1;
+			Integer playerPosition = MediaPlayer.getInstance().getPlayerPosition();
 
 			avrcpIntent.putExtra("track", title);
 			avrcpIntent.putExtra("track_name", title);
@@ -1061,9 +1061,9 @@ public class Util extends DownloadActivity
 			avrcpIntent.putExtra("album_artist_name", artist);
 
 
-			if (Util.getShouldSendBluetoothAlbumArt(context))
+			if (Util.getShouldSendBluetoothAlbumArt(mediaPlayer))
 			{
-				File albumArtFile = FileUtil.getAlbumArtFile(context, song);
+				File albumArtFile = FileUtil.getAlbumArtFile(mediaPlayer, song);
 				avrcpIntent.putExtra("coverart", albumArtFile.getAbsolutePath());
 				avrcpIntent.putExtra("cover", albumArtFile.getAbsolutePath());
 			}
@@ -1078,17 +1078,17 @@ public class Util extends DownloadActivity
 			}
 		}
 
-		context.sendBroadcast(avrcpIntent);
+		mediaPlayer.sendBroadcast(avrcpIntent);
 	}
 
-	public static void broadcastA2dpPlayStatusChange(Context context, PlayerState state, DownloadService downloadService)
+	public static void broadcastA2dpPlayStatusChange(Context context, PlayerState state, MediaPlayer mediaPlayer)
 	{
-		if (!Util.getShouldSendBluetoothNotifications(context) || downloadService == null)
+		if (!Util.getShouldSendBluetoothNotifications(context) || mediaPlayer == null)
 		{
 			return;
 		}
 
-		DownloadFile currentPlaying = downloadService.getCurrentPlaying();
+		DownloadFile currentPlaying = mediaPlayer.getCurrentPlaying();
 
 		if (currentPlaying != null)
 		{
@@ -1110,9 +1110,9 @@ public class Util extends DownloadActivity
 			String artist = song.getArtist();
 			String album = song.getAlbum();
 			Integer duration = song.getDuration();
-			Integer listSize = downloadService.getDownloads().size();
-			Integer id = downloadService.getCurrentPlayingIndex() + 1;
-			Integer playerPosition = downloadService.getPlayerPosition();
+			Integer listSize = DownloadServiceImpl.getInstance().getDownloads().size();
+			Integer id = MediaPlayer.getInstance().getCurrentPlayingIndex() + 1;
+			Integer playerPosition = MediaPlayer.getInstance().getPlayerPosition();
 
 			avrcpIntent.putExtra("track", title);
 			avrcpIntent.putExtra("track_name", title);
@@ -1234,22 +1234,21 @@ public class Util extends DownloadActivity
 				@Override
 				public void onAudioFocusChange(int focusChange)
 				{
-					DownloadService downloadService = (DownloadService) context;
-					if ((focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) && !downloadService.isJukeboxEnabled())
+					if ((focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) && !MediaPlayer.getInstance().isJukeboxEnabled())
 					{
-						if (downloadService.getPlayerState() == PlayerState.STARTED)
+						if (MediaPlayer.getInstance().getPlayerState() == PlayerState.STARTED)
 						{
 							SharedPreferences preferences = getPreferences(context);
 							int lossPref = Integer.parseInt(preferences.getString(Constants.PREFERENCES_KEY_TEMP_LOSS, "1"));
 							if (lossPref == 2 || (lossPref == 1 && focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK))
 							{
 								lowerFocus = true;
-								downloadService.setVolume(0.1f);
+								MediaPlayer.getInstance().setVolume(0.1f);
 							}
 							else if (lossPref == 0 || (lossPref == 1))
 							{
 								pauseFocus = true;
-								downloadService.pause();
+								MediaPlayer.getInstance().pause();
 							}
 						}
 					}
@@ -1258,18 +1257,18 @@ public class Util extends DownloadActivity
 						if (pauseFocus)
 						{
 							pauseFocus = false;
-							downloadService.start();
+							MediaPlayer.getInstance().start();
 						}
 						else if (lowerFocus)
 						{
 							lowerFocus = false;
-							downloadService.setVolume(1.0f);
+							MediaPlayer.getInstance().setVolume(1.0f);
 						}
 					}
-					else if (focusChange == AudioManager.AUDIOFOCUS_LOSS && !downloadService.isJukeboxEnabled())
+					else if (focusChange == AudioManager.AUDIOFOCUS_LOSS && !MediaPlayer.getInstance().isJukeboxEnabled())
 					{
 						hasFocus = false;
-						downloadService.pause();
+						MediaPlayer.getInstance().pause();
 						audioManager.abandonAudioFocus(this);
 					}
 				}
@@ -1326,25 +1325,25 @@ public class Util extends DownloadActivity
 
 		// Emulate media button clicks.
 		intent = new Intent("1");
-		intent.setComponent(new ComponentName(context, DownloadServiceImpl.class));
+		intent.setComponent(new ComponentName(context, MediaPlayer.class));
 		intent.putExtra(Intent.EXTRA_KEY_EVENT, new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE));
 		pendingIntent = PendingIntent.getService(context, 0, intent, 0);
 		views.setOnClickPendingIntent(R.id.control_play, pendingIntent);
 
 		intent = new Intent("2");
-		intent.setComponent(new ComponentName(context, DownloadServiceImpl.class));
+		intent.setComponent(new ComponentName(context, MediaPlayer.class));
 		intent.putExtra(Intent.EXTRA_KEY_EVENT, new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT));
 		pendingIntent = PendingIntent.getService(context, 0, intent, 0);
 		views.setOnClickPendingIntent(R.id.control_next, pendingIntent);
 
 		intent = new Intent("3");
-		intent.setComponent(new ComponentName(context, DownloadServiceImpl.class));
+		intent.setComponent(new ComponentName(context, MediaPlayer.class));
 		intent.putExtra(Intent.EXTRA_KEY_EVENT, new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PREVIOUS));
 		pendingIntent = PendingIntent.getService(context, 0, intent, 0);
 		views.setOnClickPendingIntent(R.id.control_previous, pendingIntent);
 
 		intent = new Intent("4");
-		intent.setComponent(new ComponentName(context, DownloadServiceImpl.class));
+		intent.setComponent(new ComponentName(context, MediaPlayer.class));
 		intent.putExtra(Intent.EXTRA_KEY_EVENT, new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_STOP));
 		pendingIntent = PendingIntent.getService(context, 0, intent, 0);
 		views.setOnClickPendingIntent(R.id.control_stop, pendingIntent);

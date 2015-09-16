@@ -7,16 +7,19 @@
               a:paddingTop="8dip"
               a:paddingLeft="4dip"
               a:paddingRight="4dip"
+              a:id="@+id/media_buttons"
     >
 
-<ImageView
+    <IconTextView
         a:id="@+id/download_shuffle"
         a:layout_width="0dip"
         a:layout_height="wrap_content"
         a:layout_weight="1"
         a:focusable="true"
-        a:src="?attr/media_shuffle"
-        a:paddingLeft="2dip"
+        a:text="{fa-random}"
+        a:textSize="22dp"
+        a:paddingTop="8dip"
+        a:paddingLeft="8dip"
         a:paddingRight="8dip"/>
 
     <com.thejoshwa.ultrasonic.androidapp.view.AutoRepeatButton
@@ -25,37 +28,45 @@
         a:layout_height="wrap_content"
         a:layout_weight="1"
         a:focusable="true"
-        a:src="?attr/media_previous"
+        a:text="{fa-step-backward}"
+        a:textSize="22dp"
+        a:paddingTop="8dip"
         a:paddingLeft="8dip"
         a:paddingRight="8dip"/>
 
-    <ImageView
+    <IconTextView
         a:id="@+id/download_start"
         a:layout_width="0dip"
         a:layout_height="wrap_content"
         a:layout_weight="1"
         a:focusable="true"
-        a:src="?attr/media_play"
+        a:text="{fa-play}"
+        a:textSize="26dp"
+        a:paddingTop="8dip"
         a:paddingRight="8dip"
         a:paddingLeft="8dip"/>
 
-    <ImageView
+    <IconTextView
         a:id="@+id/download_pause"
         a:layout_width="0dip"
         a:layout_height="wrap_content"
         a:layout_weight="1"
         a:focusable="true"
-        a:src="?attr/media_pause"
+        a:text="{fa-pause}"
+        a:textSize="26dp"
+        a:paddingTop="8dip"
         a:paddingLeft="8dip"
         a:paddingRight="8dip"/>
 
-    <ImageView
+    <IconTextView
         a:id="@+id/download_stop"
         a:layout_width="0dip"
         a:layout_height="wrap_content"
         a:layout_weight="1"
         a:focusable="true"
-        a:src="?attr/media_stop"
+        a:text="{fa-stop}"
+        a:textSize="26dp"
+        a:paddingTop="8dip"
         a:paddingLeft="8dip"
         a:paddingRight="8dip"/>
 
@@ -65,17 +76,21 @@
         a:layout_height="wrap_content"
         a:layout_weight="1"
         a:focusable="true"
-        a:src="?attr/media_next"
+        a:text="{fa-step-forward}"
+        a:textSize="22dp"
+        a:paddingTop="8dip"
         a:paddingLeft="8dip"
         a:paddingRight="8dip"/>
 
-    <ImageView
+    <IconTextView
         a:id="@+id/download_repeat"
         a:layout_width="0dip"
         a:layout_height="wrap_content"
         a:layout_weight="1"
         a:focusable="true"
-        a:src="?attr/media_repeat_off"
+        a:text="{fa-repeat}"
+        a:textSize="22dp"
+        a:paddingTop="8dip"
         a:paddingLeft="8dip"
         a:paddingRight="2dip"/>
 

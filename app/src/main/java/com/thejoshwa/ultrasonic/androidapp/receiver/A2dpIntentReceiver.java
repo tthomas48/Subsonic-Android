@@ -7,6 +7,7 @@ import android.content.Intent;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory.Entry;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 
 public class A2dpIntentReceiver extends BroadcastReceiver
 {
@@ -17,19 +18,20 @@ public class A2dpIntentReceiver extends BroadcastReceiver
 	public void onReceive(Context context, Intent intent)
 	{
 
+		MediaPlayer mediaPlayer = MediaPlayer.getInstance();
 		DownloadService downloadService = DownloadServiceImpl.getInstance();
 
-		if (downloadService == null)
+		if (mediaPlayer == null || downloadService == null)
 		{
 			return;
 		}
 
-		if (downloadService.getCurrentPlaying() == null)
+		if (mediaPlayer.getCurrentPlaying() == null)
 		{
 			return;
 		}
 
-		Entry song = downloadService.getCurrentPlaying().getSong();
+		Entry song = mediaPlayer.getCurrentPlaying().getSong();
 
 		if (song == null)
 		{
@@ -39,7 +41,7 @@ public class A2dpIntentReceiver extends BroadcastReceiver
 		Intent avrcpIntent = new Intent(PLAYSTATUS_RESPONSE);
 
 		Integer duration = song.getDuration();
-		Integer playerPosition = downloadService.getPlayerPosition();
+		Integer playerPosition = mediaPlayer.getPlayerPosition();
 		Integer listSize = downloadService.getDownloads().size();
 
 		if (duration != null)
@@ -50,7 +52,7 @@ public class A2dpIntentReceiver extends BroadcastReceiver
 		avrcpIntent.putExtra("position", (long) playerPosition);
 		avrcpIntent.putExtra("ListSize", (long) listSize);
 
-		switch (downloadService.getPlayerState())
+		switch (mediaPlayer.getPlayerState())
 		{
 			case STARTED:
 				avrcpIntent.putExtra("playing", true);

@@ -4,9 +4,9 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ImageView;
+import android.widget.IconTextView;
 
-public class AutoRepeatButton extends ImageView
+public class AutoRepeatButton extends IconTextView
 {
 
 	private long initialRepeatDelay = 1000;

@@ -290,22 +290,22 @@ public class SelectArtistActivity extends SubsonicTabActivity implements Adapter
 			switch (menuItem.getItemId())
 			{
 				case R.id.artist_menu_play_now:
-					downloadRecursively(artist.getId(), false, false, true, false, false, false, false, true);
+					enqueueRecursively(artist.getId(), false, false, true, false, false, false, false, true);
 					break;
 				case R.id.artist_menu_play_next:
-					downloadRecursively(artist.getId(), false, false, true, true, false, true, false, true);
+					enqueueRecursively(artist.getId(), false, false, true, true, false, true, false, true);
 					break;
 				case R.id.artist_menu_play_last:
-					downloadRecursively(artist.getId(), false, true, false, false, false, false, false, true);
+					enqueueRecursively(artist.getId(), false, true, false, false, false, false, false, true);
 					break;
 				case R.id.artist_menu_pin:
-					downloadRecursively(artist.getId(), true, true, false, false, false, false, false, true);
+					enqueueRecursively(artist.getId(), true, true, false, false, false, false, false, true);
 					break;
 				case R.id.artist_menu_unpin:
-					downloadRecursively(artist.getId(), false, false, false, false, false, false, true, true);
+					enqueueRecursively(artist.getId(), false, false, false, false, false, false, true, true);
 					break;
 				case R.id.artist_menu_download:
-					downloadRecursively(artist.getId(), false, false, false, false, true, false, false, true);
+					enqueueRecursively(artist.getId(), false, false, false, false, true, false, false, true);
 					break;
 				default:
 					return super.onContextItemSelected(menuItem);

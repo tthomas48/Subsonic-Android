@@ -114,7 +114,11 @@ public interface MusicService
 
 	String getVideoStreamUrl(int Bitrate, Context context, String id);
 
+	JukeboxStatus getJukeboxPlaylist(Context context, ProgressListener progressListener) throws Exception;
+
 	JukeboxStatus updateJukeboxPlaylist(List<String> ids, Context context, ProgressListener progressListener) throws Exception;
+
+	JukeboxStatus clearJukeboxPlaylist(Context context, ProgressListener progressListener) throws Exception;
 
 	JukeboxStatus skipJukebox(int index, int offsetSeconds, Context context, ProgressListener progressListener) throws Exception;
 

@@ -29,6 +29,7 @@ public class JukeboxStatus
 	private Integer currentPlayingIndex;
 	private Float gain;
 	private boolean playing;
+	private MusicDirectory playlist;
 
 	public Integer getPositionSeconds()
 	{
@@ -68,5 +69,13 @@ public class JukeboxStatus
 	public void setGain(float gain)
 	{
 		this.gain = gain;
+	}
+
+	public void setPlaylist(MusicDirectory playlist) {
+		this.playlist = playlist;
+	}
+
+	public MusicDirectory getPlaylist() {
+		return this.playlist;
 	}
 }

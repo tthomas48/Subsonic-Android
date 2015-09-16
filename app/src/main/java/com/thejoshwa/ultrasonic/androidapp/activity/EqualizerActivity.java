@@ -32,8 +32,7 @@ import android.widget.TextView;
 
 import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.audiofx.EqualizerController;
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -123,14 +122,14 @@ public class EqualizerActivity extends ResultActivity
 
 	private void setup()
 	{
-		DownloadService instance = DownloadServiceImpl.getInstance();
+		MediaPlayer mediaPlayer = MediaPlayer.getInstance();
 
-		if (instance == null)
+		if (mediaPlayer == null)
 		{
 			return;
 		}
 
-		equalizerController = instance.getEqualizerController();
+		equalizerController = mediaPlayer.getEqualizerController();
 		equalizer = equalizerController.getEqualizer();
 
 		initEqualizer();

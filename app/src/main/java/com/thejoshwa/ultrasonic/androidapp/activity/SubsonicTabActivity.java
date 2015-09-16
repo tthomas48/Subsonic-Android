@@ -36,6 +36,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.support.v7.graphics.Palette;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -48,6 +49,7 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.IconTextView;
 import android.widget.ImageView;
 import android.widget.RemoteViews;
 import android.widget.Switch;
@@ -61,6 +63,7 @@ import com.thejoshwa.ultrasonic.androidapp.domain.Share;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadFile;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicService;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicServiceFactory;
 import com.thejoshwa.ultrasonic.androidapp.util.BackgroundTask;
@@ -68,6 +71,7 @@ import com.thejoshwa.ultrasonic.androidapp.util.Constants;
 import com.thejoshwa.ultrasonic.androidapp.util.EntryByDiscAndTrackComparator;
 import com.thejoshwa.ultrasonic.androidapp.util.ImageLoader;
 import com.thejoshwa.ultrasonic.androidapp.util.ModalBackgroundTask;
+import com.thejoshwa.ultrasonic.androidapp.util.NowPlayingImageHolder;
 import com.thejoshwa.ultrasonic.androidapp.util.ShareDetails;
 import com.thejoshwa.ultrasonic.androidapp.util.SilentBackgroundTask;
 import com.thejoshwa.ultrasonic.androidapp.util.TabActivityBackgroundTask;
@@ -109,6 +113,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 	public MenuDrawer menuDrawer;
 	private int activePosition = 1;
 	private int menuActiveViewId;
+	private NowPlayingImageHolder nowPlayingImageHolder;
 	private View nowPlayingView;
 	View chatMenuItem;
 	View bookmarksMenuItem;
@@ -134,6 +139,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		super.onCreate(bundle);
 
 		startService(new Intent(this, DownloadServiceImpl.class));
+		startService(new Intent(this, MediaPlayer.class));
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
 		if (bundle != null)
@@ -249,7 +255,14 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 
 		if (isVolumeAdjust && isJukebox)
 		{
-			getDownloadService().adjustJukeboxVolume(isVolumeUp);
+			float currentVolume = MediaPlayer.getInstance().getVolume();
+			if (isVolumeUp) {
+				currentVolume += 1;
+			}
+			if (isVolumeDown) {
+				currentVolume -= 1;
+			}
+			MediaPlayer.getInstance().setVolume(currentVolume);
 			return true;
 		}
 
@@ -295,19 +308,18 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 							return null;
 						}
 
-						nowPlayingView = findViewById(R.id.now_playing);
-
+						View nowPlayingView = getNowPlayingView();
 						if (nowPlayingView != null)
 						{
 							final DownloadService downloadService = DownloadServiceImpl.getInstance();
 
 							if (downloadService != null)
 							{
-								PlayerState playerState = downloadService.getPlayerState();
+								PlayerState playerState = MediaPlayer.getInstance().getPlayerState();
 
 								if (playerState.equals(PlayerState.PAUSED) || playerState.equals(PlayerState.STARTED))
 								{
-									DownloadFile file = downloadService.getCurrentPlaying();
+									DownloadFile file = MediaPlayer.getInstance().getCurrentPlaying();
 
 									if (file != null)
 									{
@@ -354,11 +366,64 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		{
 			setTheme(R.style.UltraSonicThemeMaterial);
 		}
-		
-		
+
+
 	}
 
-	public void showNotification(final Handler handler, final Entry song, final DownloadServiceImpl downloadService, final Notification notification, final PlayerState playerState)
+	public void updatePlayingImage(MusicDirectory.Entry song, Bitmap bitmap, final Palette.Swatch vibrant)
+	{
+
+		if (currentSong != null)
+		{
+			Log.d(TAG, song.getId() + " vs. " + currentSong.getId());
+		}
+		if (!song.equals(currentSong)) {
+			return;
+		}
+
+		if (bitmap == null) {
+			return;
+		}
+
+		nowPlayingImage = bitmap;
+		Notification notification = getMediaPlayer().getNotification();
+		if (notification == null) {
+			return;
+		}
+		Log.d(TAG, "updatePlayingImage");
+		RemoteViews notificationView = notification.contentView;
+		RemoteViews bigNotificationView = null;
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
+		{
+			bigNotificationView = notification.bigContentView;
+		}
+		if (vibrant != null)
+		{
+			setBackgroundViewColorOnUiThread(notificationView, R.id.statusbar, vibrant.getRgb());
+			setTextViewColorOnUiThread(notificationView, R.id.trackname, vibrant.getTitleTextColor());
+			setTextViewColorOnUiThread(notificationView, R.id.artist, vibrant.getBodyTextColor());
+			setTextViewColorOnUiThread(notificationView, R.id.album, vibrant.getBodyTextColor());
+		}
+
+		setImageViewBitmapOnUiThread(notificationView, R.id.notification_image, nowPlayingImage);
+
+		if (bigNotificationView != null)
+		{
+			setImageViewBitmapOnUiThread(bigNotificationView, R.id.notification_image, nowPlayingImage);
+			if (vibrant != null)
+			{
+				setBackgroundViewColorOnUiThread(bigNotificationView, R.id.statusbar, vibrant.getRgb());
+				setTextViewColorOnUiThread(bigNotificationView, R.id.trackname, vibrant.getTitleTextColor());
+				setTextViewColorOnUiThread(bigNotificationView, R.id.artist, vibrant.getBodyTextColor());
+				setTextViewColorOnUiThread(bigNotificationView, R.id.album, vibrant.getBodyTextColor());
+			}
+		}
+		this.notificationManager.cancel(Constants.NOTIFICATION_ID_PLAYING);
+		this.notificationManager.notify(Constants.NOTIFICATION_ID_PLAYING, notification);
+	}
+
+	public void showNotification(final Handler handler, final Entry song, final MediaPlayer mediaPlayer, final Notification notification, final PlayerState playerState)
 	{
 		if (!Util.isNotificationEnabled(this))
 		{
@@ -418,15 +483,11 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 								setImageViewResourceOnUiThread(bigNotificationView, R.id.notification_image, R.drawable.unknown_album);
 							}
 						}
-						else
-						{
-							setImageViewBitmapOnUiThread(notificationView, R.id.notification_image, nowPlayingImage);
-
-							if (bigNotificationView != null)
-							{
-								setImageViewBitmapOnUiThread(bigNotificationView, R.id.notification_image, nowPlayingImage);
-							}
-						}
+//						else
+//						{
+//							final Palette.Swatch swatch = getSwatch(nowPlayingImage);
+//							updatePlayingImage(song, nowPlayingImage, swatch);
+//						}
 					}
 					catch (Exception x)
 					{
@@ -457,7 +518,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 					@Override
 					public void run()
 					{
-						downloadService.startForeground(Constants.NOTIFICATION_ID_PLAYING, notification);
+						mediaPlayer.startForeground(Constants.NOTIFICATION_ID_PLAYING, notification);
 					}
 				});
 
@@ -466,7 +527,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		}.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 	}
 
-	public void hidePlayingNotification(final Handler handler, final DownloadServiceImpl downloadService)
+	public void hidePlayingNotification(final Handler handler, final MediaPlayer mediaPlayer)
 	{
 		currentSong = null;
 
@@ -476,7 +537,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 			@Override
 			public void run()
 			{
-				downloadService.stopForeground(true);
+				mediaPlayer.stopForeground(true);
 			}
 		});
 	}
@@ -494,11 +555,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 			return;
 		}
 
-		if (nowPlayingView == null)
-		{
-			nowPlayingView = findViewById(R.id.now_playing);
-		}
-
+		View nowPlayingView = getNowPlayingView();
 		if (nowPlayingView != null)
 		{
 			try
@@ -506,15 +563,15 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 				setVisibilityOnUiThread(nowPlayingView, View.VISIBLE);
 				nowPlayingHidden = false;
 
-				ImageView playButton = (ImageView) nowPlayingView.findViewById(R.id.now_playing_control_play);
+				IconTextView playButton = (IconTextView) nowPlayingView.findViewById(R.id.now_playing_control_play);
 
 				if (playerState == PlayerState.PAUSED)
 				{
-					setImageDrawableOnUiThread(playButton, Util.getDrawableFromAttribute(context, R.attr.media_play));
+					setTextOnUiThread(playButton, "{fa-play}");
 				}
 				else if (playerState == PlayerState.STARTED)
 				{
-					setImageDrawableOnUiThread(playButton, Util.getDrawableFromAttribute(context, R.attr.media_pause));
+					setTextOnUiThread(playButton, "{fa-pause}");
 				}
 
 				String title = song.getTitle();
@@ -529,7 +586,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 					@Override
 					public void run()
 					{
-						getImageLoader().loadImage(nowPlayingAlbumArtImage, song, false, Util.getNotificationImageSize(context), false, true);
+						getImageLoader().loadImage(nowPlayingImageHolder, song, false, Util.getNotificationImageSize(context), false, true);
 					}
 				});
 
@@ -578,7 +635,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 					@Override
 					public void onClick(View view)
 					{
-						downloadService.togglePlayPause();
+						MediaPlayer.getInstance().togglePlayPause();
 					}
 				});
 
@@ -594,11 +651,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 	{
 		try
 		{
-			if (nowPlayingView == null)
-			{
-				nowPlayingView = findViewById(R.id.now_playing);
-			}
-
+			View nowPlayingView = getNowPlayingView();
 			if (nowPlayingView != null)
 			{
 				setVisibilityOnUiThread(nowPlayingView, View.GONE);
@@ -608,6 +661,17 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		{
 			Log.w(String.format("Exception in hideNowPlaying: %s", ex), ex);
 		}
+	}
+
+	private View getNowPlayingView() {
+		if (nowPlayingView == null)
+		{
+			nowPlayingView = findViewById(R.id.now_playing);
+		}
+		if (nowPlayingView != null && nowPlayingImageHolder == null) {
+			nowPlayingImageHolder = new NowPlayingImageHolder(nowPlayingView);
+		}
+		return nowPlayingView;
 	}
 
 	@Override
@@ -789,6 +853,21 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		task.execute();
 	}
 
+	public void setTextViewTextColorOnUiThread(final TextView view, final int color)
+	{
+		this.runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				if (view != null)
+				{
+					view.setTextColor(color);
+				}
+			}
+		});
+	}
+
 	public void setTextViewTextOnUiThread(final RemoteViews view, final int id, final CharSequence text)
 	{
 		this.runOnUiThread(new Runnable()
@@ -803,6 +882,70 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 			}
 		});
 	}
+
+	public void setBackgroundViewColorOnUiThread(final View view, final int color) {
+		this.runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				if (view != null)
+				{
+					view.setBackgroundColor(color);
+				}
+			}
+		});
+
+	}
+
+
+	public void setBackgroundViewColorOnUiThread(final RemoteViews view, final int id, final int color) {
+		this.runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				if (view != null)
+				{
+					view.setInt(id, "setBackgroundColor", color);
+				}
+			}
+		});
+
+	}
+
+
+	public void setTextViewColorOnUiThread(final RemoteViews view, final int id, final int color)
+	{
+		this.runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				if (view != null)
+				{
+					view.setTextColor(id, color);
+				}
+			}
+		});
+	}
+
+	public void setTextViewColorOnUiThread(final TextView view, final int color)
+	{
+		this.runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				if (view != null)
+				{
+					view.setTextColor(color);
+				}
+			}
+		});
+	}
+
+
 
 	public void setImageViewBitmapOnUiThread(final RemoteViews view, final int id, final Bitmap bitmap)
 	{
@@ -957,6 +1100,26 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		return DownloadServiceImpl.getInstance();
 	}
 
+	public MediaPlayer getMediaPlayer()
+	{
+		// If service is not available, request it to start and wait for it.
+		for (int i = 0; i < 5; i++)
+		{
+			MediaPlayer mediaPlayer = MediaPlayer.getInstance();
+
+			if (mediaPlayer != null)
+			{
+				break;
+			}
+
+			Log.w(TAG, "MediaPlayer not running. Attempting to start it.");
+			startService(new Intent(this, MediaPlayer.class));
+			Util.sleepQuietly(50L);
+		}
+
+		return MediaPlayer.getInstance();
+	}
+
 	protected void warnIfNetworkOrStorageUnavailable()
 	{
 		if (!Util.isExternalStoragePresent())
@@ -985,6 +1148,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		return IMAGE_LOADER;
 	}
 
+	/*
 	void download(final boolean append, final boolean save, final boolean autoPlay, final boolean playNext, final boolean shuffle, final List<Entry> songs)
 	{
 		if (getDownloadService() == null)
@@ -999,11 +1163,11 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 			{
 				if (!append && !playNext)
 				{
-					getDownloadService().clear();
+					MediaPlayer.getInstance().clear();
 				}
 
 				warnIfNetworkOrStorageUnavailable();
-				getDownloadService().download(songs, save, autoPlay, playNext, shuffle, false);
+				MediaPlayer.getInstance().enqueue(songs, save, autoPlay, playNext, shuffle, false);
 				String playlistName = getIntent().getStringExtra(Constants.INTENT_EXTRA_NAME_PLAYLIST_NAME);
 
 				if (playlistName != null)
@@ -1035,23 +1199,24 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 
 		checkLicenseAndTrialPeriod(onValid);
 	}
+	*/
 
-	protected void downloadRecursively(final String id, final boolean save, final boolean append, final boolean autoplay, final boolean shuffle, final boolean background, final boolean playNext, final boolean unpin, final boolean isArtist)
+	protected void enqueueRecursively(final String id, final boolean save, final boolean append, final boolean autoplay, final boolean shuffle, final boolean background, final boolean playNext, final boolean unpin, final boolean isArtist)
 	{
-		downloadRecursively(id, "", false, true, save, append, autoplay, shuffle, background, playNext, unpin, isArtist);
+		enqueueRecursively(id, "", false, true, save, append, autoplay, shuffle, background, playNext, unpin, isArtist);
 	}
 
 	protected void downloadShare(final String id, final String name, final boolean save, final boolean append, final boolean autoplay, final boolean shuffle, final boolean background, final boolean playNext, final boolean unpin)
 	{
-		downloadRecursively(id, name, true, false, save, append, autoplay, shuffle, background, playNext, unpin, false);
+		enqueueRecursively(id, name, true, false, save, append, autoplay, shuffle, background, playNext, unpin, false);
 	}
 
 	protected void downloadPlaylist(final String id, final String name, final boolean save, final boolean append, final boolean autoplay, final boolean shuffle, final boolean background, final boolean playNext, final boolean unpin)
 	{
-		downloadRecursively(id, name, false, false, save, append, autoplay, shuffle, background, playNext, unpin, false);
+		enqueueRecursively(id, name, false, false, save, append, autoplay, shuffle, background, playNext, unpin, false);
 	}
 
-	protected void downloadRecursively(final String id, final String name, final boolean isShare, final boolean isDirectory, final boolean save, final boolean append, final boolean autoplay, final boolean shuffle, final boolean background, final boolean playNext, final boolean unpin, final boolean isArtist)
+	protected void enqueueRecursively(final String id, final String name, final boolean isShare, final boolean isDirectory, final boolean save, final boolean append, final boolean autoplay, final boolean shuffle, final boolean background, final boolean playNext, final boolean unpin, final boolean isArtist)
 	{
 		ModalBackgroundTask<List<Entry>> task = new ModalBackgroundTask<List<Entry>>(this, false)
 		{
@@ -1168,7 +1333,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 				{
 					if (!append && !playNext && !unpin && !background)
 					{
-						downloadService.clear();
+						MediaPlayer.getInstance().clear();
 					}
 					warnIfNetworkOrStorageUnavailable();
 					if (!background)
@@ -1179,7 +1344,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 						}
 						else
 						{
-							downloadService.download(songs, save, autoplay, playNext, shuffle, false);
+							MediaPlayer.getInstance().enqueue(songs, save, autoplay, playNext, shuffle, false);
 							if (!append && Util.getShouldTransitionOnPlaybackPreference(SubsonicTabActivity.this))
 							{
 								startActivityForResultWithoutTransition(SubsonicTabActivity.this, DownloadActivity.class);
@@ -1501,7 +1666,7 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		int buttonId = compoundButton.getId();
 		switch(buttonId) {
 			case R.id.menu_jukebox:
-				getDownloadService().setJukeboxEnabled(b);
+				MediaPlayer.getInstance().setJukeboxEnabled(b);
 				break;
 		}
 	}
@@ -1575,12 +1740,12 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 						// left or right
 						if (deltaX < 0)
 						{
-							downloadService.previous();
+							MediaPlayer.getInstance().previous();
 							return false;
 						}
 						if (deltaX > 0)
 						{
-							downloadService.next();
+							MediaPlayer.getInstance().next();
 							return false;
 						}
 					}
@@ -1607,7 +1772,8 @@ public class SubsonicTabActivity extends ResultActivity implements OnClickListen
 		}
 	}
 
+
 	private boolean isJukeboxEnabled() {
-		return getDownloadService() != null && getDownloadService().isJukeboxEnabled();
+		return MediaPlayer.getInstance().isJukeboxEnabled();
 	}
 }

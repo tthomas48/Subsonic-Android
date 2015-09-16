@@ -25,7 +25,7 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
 
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.util.Util;
 
 /**
@@ -55,7 +55,7 @@ public class MediaButtonIntentReceiver extends BroadcastReceiver
 			Parcelable event = (Parcelable) extras.get(Intent.EXTRA_KEY_EVENT);
 			Log.i(TAG, "Got MEDIA_BUTTON key event: " + event);
 
-			Intent serviceIntent = new Intent(context, DownloadServiceImpl.class);
+			Intent serviceIntent = new Intent(context, MediaPlayer.class);
 			serviceIntent.putExtra(Intent.EXTRA_KEY_EVENT, event);
 			context.startService(serviceIntent);
 

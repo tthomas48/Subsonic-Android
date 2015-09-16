@@ -34,6 +34,7 @@ import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory.Entry;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadFile;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadService;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicService;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicServiceFactory;
 import com.thejoshwa.ultrasonic.androidapp.util.Util;
@@ -389,7 +390,7 @@ public class SongView extends UpdateView implements Checkable
 			}
 		}
 
-		boolean playing = downloadService.getCurrentPlaying() == downloadFile;
+		boolean playing = MediaPlayer.getInstance().getCurrentPlaying() == downloadFile;
 
 		if (playing)
 		{

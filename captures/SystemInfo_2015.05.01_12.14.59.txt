@@ -1,0 +1,38 @@
+Applications Memory Usage (kB):
+Uptime: 63358383 Realtime: 105818982
+
+** MEMINFO in pid 2849 [com.thejoshwa.ultrasonic.androidapp] **
+                   Pss  Private  Private  Swapped     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------
+  Native Heap     7779     7744        0        0    16384    10885     5498
+  Dalvik Heap    29820    29444        0        0    52344    45371     6973
+ Dalvik Other      672      672        0        0                           
+        Stack      368      368        0        0                           
+       Ashmem      130      128        0        0                           
+      Gfx dev     2812     2812        0        0                           
+    Other dev        4        0        4        0                           
+     .so mmap    11075      444     7856        0                           
+    .apk mmap     1198        0      928        0                           
+    .ttf mmap      112        0       96        0                           
+    .dex mmap     2683        0     2176        0                           
+    .oat mmap     1619        0      472        0                           
+    .art mmap     1289      960       24        0                           
+   Other mmap      476        4      384        0                           
+   EGL mtrack    22528    22528        0        0                           
+    GL mtrack     6900     6900        0        0                           
+      Unknown     2064     2064        0        0                           
+        TOTAL    91529    74068    11940        0    68728    56256    12471
+ 
+ Objects
+               Views:      106         ViewRootImpl:        1
+         AppContexts:        5           Activities:        1
+              Assets:        3        AssetManagers:        3
+       Local Binders:       23        Proxy Binders:       37
+       Parcel memory:        7         Parcel count:       28
+    Death Recipients:        0      OpenSSL Sockets:        1
+ 
+ SQL
+         MEMORY_USED:        0
+  PAGECACHE_OVERFLOW:        0          MALLOC_SIZE:        0
+ 

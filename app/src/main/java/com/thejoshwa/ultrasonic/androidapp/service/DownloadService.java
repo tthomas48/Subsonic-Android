@@ -18,11 +18,7 @@
  */
 package com.thejoshwa.ultrasonic.androidapp.service;
 
-import com.thejoshwa.ultrasonic.androidapp.audiofx.EqualizerController;
-import com.thejoshwa.ultrasonic.androidapp.audiofx.VisualizerController;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory.Entry;
-import com.thejoshwa.ultrasonic.androidapp.domain.PlayerState;
-import com.thejoshwa.ultrasonic.androidapp.domain.RepeatMode;
 
 import java.util.List;
 
@@ -33,79 +29,23 @@ import java.util.List;
 public interface DownloadService
 {
 
-	void download(List<Entry> songs, boolean save, boolean autoplay, boolean playNext, boolean shuffle, boolean newPlaylist);
+	//void download(List<Entry> songs, boolean save, boolean autoplay, boolean playNext, boolean shuffle, boolean newPlaylist);
 
 	void downloadBackground(List<Entry> songs, boolean save);
-
-	void setShufflePlayEnabled(boolean enabled);
-
-	boolean isShufflePlayEnabled();
-
-	void shuffle();
-
-	RepeatMode getRepeatMode();
-
-	void setRepeatMode(RepeatMode repeatMode);
-
-	boolean getKeepScreenOn();
-
-	void setKeepScreenOn(boolean screenOn);
-
-	boolean getShowVisualization();
-
-	boolean getEqualizerAvailable();
-
-	boolean getVisualizerAvailable();
-
-	void setShowVisualization(boolean showVisualization);
-
-	void clear();
 
 	void clearBackground();
 
 	void clearIncomplete();
 
-	int size();
-
-	void remove(int which);
-
 	void remove(DownloadFile downloadFile);
 
-	long getDownloadListDuration();
+	//public List<DownloadFile> getSongs();
 
-	List<DownloadFile> getSongs();
-
-	List<DownloadFile> getDownloads();
+	//List<DownloadFile> getDownloads();
 
 	List<DownloadFile> getBackgroundDownloads();
 
-	int getCurrentPlayingIndex();
-
-	DownloadFile getCurrentPlaying();
-
 	DownloadFile getCurrentDownloading();
-
-	void play(int index);
-
-	void seekTo(int position);
-
-	void previous();
-
-	void next();
-
-	void pause();
-
-	void stop();
-
-	void start();
-
-	void reset();
-
-	PlayerState getPlayerState();
-
-	int getPlayerPosition();
-
-	int getPlayerDuration();
 
 	void delete(List<Entry> songs);
 
@@ -113,31 +53,15 @@ public interface DownloadService
 
 	DownloadFile forSong(Entry song);
 
-	long getDownloadListUpdateRevision();
+	public void setSuggestedPlaylistName(String name);
 
-	void setSuggestedPlaylistName(String name);
+	public String getSuggestedPlaylistName();
 
-	String getSuggestedPlaylistName();
+	public boolean isSharingAvailable();
 
-	EqualizerController getEqualizerController();
+	public void checkDownloads();
 
-	VisualizerController getVisualizerController();
+	public void serializeDownloadQueue();
 
-	boolean isJukeboxEnabled();
-
-	boolean isJukeboxAvailable();
-
-	boolean isSharingAvailable();
-
-	void setJukeboxEnabled(boolean b);
-
-	void adjustJukeboxVolume(boolean up);
-
-	void togglePlayPause();
-
-	void setVolume(float volume);
-
-	void swap(boolean mainList, int from, int to);
-
-	void restore(List<Entry> songs, int currentPlayingIndex, int currentPlayingPosition, boolean autoPlay, boolean newPlaylist);
+	public List<DownloadFile> getDownloads();
 }

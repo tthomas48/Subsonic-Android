@@ -1,21 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:a="http://schemas.android.com/apk/res/android"
-              a:orientation="horizontal"
+<com.thejoshwa.ultrasonic.androidapp.util.SquareLinearLayout xmlns:a="http://schemas.android.com/apk/res/android"
+              a:orientation="vertical"
               a:layout_width="fill_parent"
               a:layout_height="wrap_content"
+              a:id="@+id/album_background"
               a:minHeight="?android:attr/listPreferredItemHeight"
               >
 
     <ImageView
-            a:id="@+id/album_coverart"
-            a:layout_width="wrap_content"
-            a:layout_height="wrap_content"
-            a:layout_gravity="left|center_vertical"
-            a:paddingLeft="3dip"/>
+        a:id="@+id/album_coverart"
+        a:layout_width="fill_parent"
+        a:layout_height="wrap_content"
+        a:layout_centerInParent="true"
+        a:gravity="bottom"
+        a:background="?android:attr/selectableItemBackground"
+        a:elevation="8dp"
+        a:layout_weight="6"
+        a:transitionName="@string/transition_image"
+        a:scaleType="centerCrop"/>
+
 
     <LinearLayout
+        a:orientation="horizontal"
+        a:layout_width="match_parent"
+        a:layout_height="48dp"
+        a:layout_weight="5"
+        a:layout_gravity="bottom"
+        a:paddingLeft="6dip"
+        a:paddingRight="3dip">
+    <LinearLayout
             a:orientation="vertical"
-            a:layout_width="0dip"
+            a:layout_width="fill_parent"
             a:layout_height="wrap_content"
             a:layout_weight="1"
             a:layout_gravity="left|center_vertical"
@@ -45,8 +60,8 @@
 			a:layout_height="fill_parent"
 			a:gravity="center_vertical"
 			a:background="@android:color/transparent"
-            a:src="?attr/star_hollow"
             a:focusable="false"
             a:paddingRight="3dip" />
+    </LinearLayout>
     
-</LinearLayout>
+</com.thejoshwa.ultrasonic.androidapp.util.SquareLinearLayout>

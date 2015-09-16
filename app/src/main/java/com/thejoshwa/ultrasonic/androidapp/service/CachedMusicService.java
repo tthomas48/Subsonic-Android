@@ -338,6 +338,17 @@ public class CachedMusicService implements MusicService
 	}
 
 	@Override
+	public JukeboxStatus getJukeboxPlaylist(Context context, ProgressListener progressListener) throws Exception {
+		return musicService.getJukeboxPlaylist(context, progressListener);
+	}
+
+	@Override
+	public JukeboxStatus clearJukeboxPlaylist(Context context, ProgressListener progressListener) throws Exception
+	{
+		return musicService.clearJukeboxPlaylist(context, progressListener);
+	}
+
+	@Override
 	public JukeboxStatus updateJukeboxPlaylist(List<String> ids, Context context, ProgressListener progressListener) throws Exception
 	{
 		return musicService.updateJukeboxPlaylist(ids, context, progressListener);

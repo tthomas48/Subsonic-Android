@@ -53,7 +53,7 @@
             android:textAppearance="?android:attr/textAppearanceSmall" />
     </LinearLayout>
 
-    <ImageView
+    <IconTextView
         android:id="@+id/now_playing_control_play"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -62,7 +62,7 @@
         android:layout_marginTop="2dip"
         android:layout_weight="0.0"
         android:focusable="false"
-        android:src="?attr/media_pause" />
+        android:text="{fa_pause}" />
     
     </LinearLayout>
 

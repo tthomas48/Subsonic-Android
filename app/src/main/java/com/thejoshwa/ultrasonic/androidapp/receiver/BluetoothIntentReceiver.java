@@ -24,7 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-import com.thejoshwa.ultrasonic.androidapp.service.DownloadServiceImpl;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.util.Util;
 
 /**
@@ -71,7 +71,7 @@ public class BluetoothIntentReceiver extends BroadcastReceiver
 		if (disconnected)
 		{
 			Log.i(TAG, "Disconnected from Bluetooth device, requesting pause.");
-			context.sendBroadcast(new Intent(DownloadServiceImpl.CMD_PAUSE));
+			context.sendBroadcast(new Intent(MediaPlayer.CMD_PAUSE));
 		}
 	}
 }

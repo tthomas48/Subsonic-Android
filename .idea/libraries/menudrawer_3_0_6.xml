@@ -2,7 +2,7 @@
   <library name="menudrawer-3.0.6">
     <CLASSES>
       <root url="file://$PROJECT_DIR$/app/build/intermediates/exploded-aar/net.simonvt.menudrawer/menudrawer/3.0.6/res" />
-      <root url="jar://$PROJECT_DIR$/app/build/intermediates/exploded-aar/net.simonvt.menudrawer/menudrawer/3.0.6/classes.jar!/" />
+      <root url="jar://$PROJECT_DIR$/app/build/intermediates/exploded-aar/net.simonvt.menudrawer/menudrawer/3.0.6/jars/classes.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

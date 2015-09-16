@@ -318,6 +318,17 @@ public class DownloadFile
 				wifiLock = Util.createWifiLock(context, toString());
 				wifiLock.acquire();
 
+				// always attempt this as some files are not downloaded
+				MusicService musicService = MusicServiceFactory.getMusicService(context);
+
+
+				PlayerService playerService = MediaPlayer.getPlayerService(DownloadFile.this);
+				if (!playerService.canDownload()) {
+					Log.i(TAG, String.format("%s can't be downloaded. Skipping.", saveFile));
+					downloadAndSaveCoverArt(musicService);
+					return;
+				}
+
 				if (saveFile.exists())
 				{
 					Log.i(TAG, String.format("%s already exists. Skipping.", saveFile));
@@ -342,8 +353,6 @@ public class DownloadFile
 					}
 					return;
 				}
-
-				MusicService musicService = MusicServiceFactory.getMusicService(context);
 
 				// Some devices seem to throw error on partial file which doesn't exist
 				boolean compare;

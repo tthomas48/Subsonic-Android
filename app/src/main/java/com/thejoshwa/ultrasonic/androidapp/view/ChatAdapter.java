@@ -12,6 +12,7 @@ import android.widget.TextView;
 import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.activity.SubsonicTabActivity;
 import com.thejoshwa.ultrasonic.androidapp.domain.ChatMessage;
+import com.thejoshwa.ultrasonic.androidapp.util.ImageHolder;
 import com.thejoshwa.ultrasonic.androidapp.util.ImageLoader;
 import com.thejoshwa.ultrasonic.androidapp.util.Util;
 
@@ -89,10 +90,12 @@ public class ChatAdapter extends ArrayAdapter<ChatMessage>
 		String messageTimeFormatted = String.format("[%s]", timeFormat.format(messageTime));
 
 		ImageLoader imageLoader = activity.getImageLoader();
+		ImageHolder avatarHolder = new ImageHolder();
+		avatarHolder.addImageView(holder.avatar);
 
 		if (imageLoader != null)
 		{
-			imageLoader.loadAvatarImage(holder.avatar, messageUser, false, holder.avatar.getWidth(), false, true);
+			imageLoader.loadAvatarImage(avatarHolder, messageUser, false, holder.avatar.getWidth(), false, true);
 		}
 
 		holder.username.setText(messageUser);

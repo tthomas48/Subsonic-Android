@@ -19,7 +19,7 @@
         a:text="@string/select_album.empty"
         a:visibility="gone" />
 
-    <com.handmark.pulltorefresh.library.PullToRefreshListView
+    <com.handmark.pulltorefresh.library.PullToRefreshGridView
         a:id="@+id/select_album_entries"
         a:layout_width="fill_parent"
         a:layout_height="0dip"

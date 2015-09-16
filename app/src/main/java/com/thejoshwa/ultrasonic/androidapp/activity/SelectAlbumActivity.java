@@ -28,21 +28,23 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.GridView;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.TextView;
 
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
-import com.handmark.pulltorefresh.library.PullToRefreshListView;
+import com.handmark.pulltorefresh.library.PullToRefreshGridView;
 import com.thejoshwa.ultrasonic.androidapp.R;
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory;
 import com.thejoshwa.ultrasonic.androidapp.domain.Share;
 import com.thejoshwa.ultrasonic.androidapp.service.DownloadFile;
+import com.thejoshwa.ultrasonic.androidapp.service.MediaPlayer;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicService;
 import com.thejoshwa.ultrasonic.androidapp.service.MusicServiceFactory;
 import com.thejoshwa.ultrasonic.androidapp.util.AlbumHeader;
 import com.thejoshwa.ultrasonic.androidapp.util.Constants;
 import com.thejoshwa.ultrasonic.androidapp.util.EntryByDiscAndTrackComparator;
+import com.thejoshwa.ultrasonic.androidapp.util.ImageHolder;
 import com.thejoshwa.ultrasonic.androidapp.util.Pair;
 import com.thejoshwa.ultrasonic.androidapp.util.TabActivityBackgroundTask;
 import com.thejoshwa.ultrasonic.androidapp.util.Util;
@@ -61,8 +63,8 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 {
 
 	public static final String allSongsId = "-1";
-	private PullToRefreshListView refreshAlbumListView;
-	private ListView albumListView;
+	private PullToRefreshGridView refreshAlbumGridView;
+	private GridView albumGridView;
 	private View header;
 	private View albumButtons;
 	private View emptyView;
@@ -93,22 +95,23 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 		albumButtons = findViewById(R.id.menu_album);
 
-		refreshAlbumListView = (PullToRefreshListView) findViewById(R.id.select_album_entries);
-		albumListView = refreshAlbumListView.getRefreshableView();
+		refreshAlbumGridView = (PullToRefreshGridView) findViewById(R.id.select_album_entries);
+		albumGridView = refreshAlbumGridView.getRefreshableView();
+		albumGridView.setNumColumns(2);
 
-		refreshAlbumListView.setOnRefreshListener(new OnRefreshListener<ListView>()
+		refreshAlbumGridView.setOnRefreshListener(new OnRefreshListener<GridView>()
 		{
 			@Override
-			public void onRefresh(PullToRefreshBase<ListView> refreshView)
+			public void onRefresh(PullToRefreshBase<GridView> refreshView)
 			{
 				new GetDataTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 			}
 		});
 
-		header = LayoutInflater.from(this).inflate(R.layout.select_album_header, albumListView, false);
+		header = LayoutInflater.from(this).inflate(R.layout.select_album_header, albumGridView, false);
 
-		albumListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
-		albumListView.setOnItemClickListener(new AdapterView.OnItemClickListener()
+		albumGridView.setChoiceMode(GridView.CHOICE_MODE_MULTIPLE);
+		albumGridView.setOnItemClickListener(new AdapterView.OnItemClickListener()
 		{
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id)
@@ -124,12 +127,10 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 						intent.putExtra(Constants.INTENT_EXTRA_NAME_NAME, entry.getTitle());
 						intent.putExtra(Constants.INTENT_EXTRA_NAME_PARENT_ID, entry.getParent());
 						startActivityForResultWithoutTransition(SelectAlbumActivity.this, intent);
-					}
-					else if (entry != null && entry.isVideo())
+					} else if (entry != null && entry.isVideo())
 					{
 						playVideo(entry);
-					}
-					else
+					} else
 					{
 						enableButtons();
 					}
@@ -169,7 +170,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 			@Override
 			public void onClick(View view)
 			{
-				download(true, false, false, true, false, getSelectedSongs(albumListView));
+				MediaPlayer.getInstance().enqueue(getSelectedSongs(albumGridView), true, false, false, true, false);
 				selectAll(false, false);
 			}
 		});
@@ -218,7 +219,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 			}
 		});
 
-		registerForContextMenu(albumListView);
+		registerForContextMenu(albumGridView);
 
 		enableButtons();
 
@@ -323,11 +324,11 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 	private void playNow(final boolean shuffle, final boolean append)
 	{
-		List<MusicDirectory.Entry> selectedSongs = getSelectedSongs(albumListView);
+		List<MusicDirectory.Entry> selectedSongs = getSelectedSongs(albumGridView);
 
 		if (!selectedSongs.isEmpty())
 		{
-			download(append, false, !append, false, shuffle, selectedSongs);
+			MediaPlayer.getInstance().enqueue(selectedSongs, append, false, !append, false, shuffle);
 			selectAll(false, false);
 		}
 		else
@@ -345,9 +346,9 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 	{
 		boolean hasSubFolders = false;
 
-		for (int i = 0; i < albumListView.getCount(); i++)
+		for (int i = 0; i < albumGridView.getCount(); i++)
 		{
-			MusicDirectory.Entry entry = (MusicDirectory.Entry) albumListView.getItemAtPosition(i);
+			MusicDirectory.Entry entry = (MusicDirectory.Entry) albumGridView.getItemAtPosition(i);
 			if (entry != null && entry.isDirectory())
 			{
 				hasSubFolders = true;
@@ -360,28 +361,28 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 		if (hasSubFolders && id != null)
 		{
-			downloadRecursively(id, false, append, !append, shuffle, false, false, false, isArtist);
+			enqueueRecursively(id, false, append, !append, shuffle, false, false, false, isArtist);
 		}
 		else
 		{
 			selectAll(true, false);
-			download(append, false, !append, false, shuffle, getSelectedSongs(albumListView));
+			MediaPlayer.getInstance().enqueue(getSelectedSongs(albumGridView), append, false, !append, false, shuffle);
 			selectAll(false, false);
 		}
 	}
 
-	private static List<MusicDirectory.Entry> getSelectedSongs(ListView albumListView)
+	private static List<MusicDirectory.Entry> getSelectedSongs(GridView albumGridView)
 	{
 		List<MusicDirectory.Entry> songs = new ArrayList<MusicDirectory.Entry>(10);
 
-		if (albumListView != null)
+		if (albumGridView != null)
 		{
-			int count = albumListView.getCount();
+			int count = albumGridView.getCount();
 			for (int i = 0; i < count; i++)
 			{
-				if (albumListView.isItemChecked(i))
+				if (albumGridView.isItemChecked(i))
 				{
-					songs.add((MusicDirectory.Entry) albumListView.getItemAtPosition(i));
+					songs.add((MusicDirectory.Entry) albumGridView.getItemAtPosition(i));
 				}
 			}
 		}
@@ -403,7 +404,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 		super.onCreateContextMenu(menu, view, menuInfo);
 		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
 
-		MusicDirectory.Entry entry = (MusicDirectory.Entry) albumListView.getItemAtPosition(info.position);
+		MusicDirectory.Entry entry = (MusicDirectory.Entry) albumGridView.getItemAtPosition(info.position);
 
 		if (entry != null && entry.isDirectory())
 		{
@@ -436,7 +437,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 			return true;
 		}
 
-		MusicDirectory.Entry entry = (MusicDirectory.Entry) albumListView.getItemAtPosition(info.position);
+		MusicDirectory.Entry entry = (MusicDirectory.Entry) albumGridView.getItemAtPosition(info.position);
 
 		if (entry == null)
 		{
@@ -448,22 +449,22 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 		switch (menuItem.getItemId())
 		{
 			case R.id.album_menu_play_now:
-				downloadRecursively(entryId, false, false, true, false, false, false, false, false);
+				enqueueRecursively(entryId, false, false, true, false, false, false, false, false);
 				break;
 			case R.id.album_menu_play_next:
-				downloadRecursively(entryId, false, false, false, false, false, true, false, false);
+				enqueueRecursively(entryId, false, false, false, false, false, true, false, false);
 				break;
 			case R.id.album_menu_play_last:
-				downloadRecursively(entryId, false, true, false, false, false, false, false, false);
+				enqueueRecursively(entryId, false, true, false, false, false, false, false, false);
 				break;
 			case R.id.album_menu_pin:
-				downloadRecursively(entryId, true, true, false, false, false, false, false, false);
+				enqueueRecursively(entryId, true, true, false, false, false, false, false, false);
 				break;
 			case R.id.album_menu_unpin:
-				downloadRecursively(entryId, false, false, false, false, false, false, true, false);
+				enqueueRecursively(entryId, false, false, false, false, false, false, true, false);
 				break;
 			case R.id.album_menu_download:
-				downloadRecursively(entryId, false, false, false, false, true, false, false, false);
+				enqueueRecursively(entryId, false, false, false, false, true, false, false, false);
 				break;
 			case R.id.select_album_play_all:
 				playAll();
@@ -496,7 +497,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 				playAll();
 				return true;
 			case R.id.menu_item_share:
-				createShare(getSelectedSongs(albumListView));
+				createShare(getSelectedSongs(albumGridView));
 				return true;
 		}
 
@@ -898,11 +899,11 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 	private void selectAllOrNone()
 	{
 		boolean someUnselected = false;
-		int count = albumListView.getCount();
+		int count = albumGridView.getCount();
 
 		for (int i = 0; i < count; i++)
 		{
-			if (!albumListView.isItemChecked(i) && albumListView.getItemAtPosition(i) instanceof MusicDirectory.Entry)
+			if (!albumGridView.isItemChecked(i) && albumGridView.getItemAtPosition(i) instanceof MusicDirectory.Entry)
 			{
 				someUnselected = true;
 				break;
@@ -914,15 +915,15 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 	private void selectAll(boolean selected, boolean toast)
 	{
-		int count = albumListView.getCount();
+		int count = albumGridView.getCount();
 		int selectedCount = 0;
 
 		for (int i = 0; i < count; i++)
 		{
-			MusicDirectory.Entry entry = (MusicDirectory.Entry) albumListView.getItemAtPosition(i);
+			MusicDirectory.Entry entry = (MusicDirectory.Entry) albumGridView.getItemAtPosition(i);
 			if (entry != null && !entry.isDirectory() && !entry.isVideo())
 			{
-				albumListView.setItemChecked(i, selected);
+				albumGridView.setItemChecked(i, selected);
 				selectedCount++;
 			}
 		}
@@ -944,7 +945,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 			return;
 		}
 
-		List<MusicDirectory.Entry> selection = getSelectedSongs(albumListView);
+		List<MusicDirectory.Entry> selection = getSelectedSongs(albumGridView);
 		boolean enabled = !selection.isEmpty();
 		boolean unpinEnabled = false;
 		boolean deleteEnabled = false;
@@ -977,12 +978,12 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 	private void downloadBackground(final boolean save)
 	{
-		List<MusicDirectory.Entry> songs = getSelectedSongs(albumListView);
+		List<MusicDirectory.Entry> songs = getSelectedSongs(albumGridView);
 
 		if (songs.isEmpty())
 		{
 			selectAll(true, false);
-			songs = getSelectedSongs(albumListView);
+			songs = getSelectedSongs(albumGridView);
 		}
 
 		downloadBackground(save, songs);
@@ -1019,12 +1020,12 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 	private void delete()
 	{
-		List<MusicDirectory.Entry> songs = getSelectedSongs(albumListView);
+		List<MusicDirectory.Entry> songs = getSelectedSongs(albumGridView);
 
 		if (songs.isEmpty())
 		{
 			selectAll(true, false);
-			songs = getSelectedSongs(albumListView);
+			songs = getSelectedSongs(albumGridView);
 		}
 
 		if (getDownloadService() != null)
@@ -1037,7 +1038,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 	{
 		if (getDownloadService() != null)
 		{
-			List<MusicDirectory.Entry> songs = getSelectedSongs(albumListView);
+			List<MusicDirectory.Entry> songs = getSelectedSongs(albumGridView);
 			Util.toast(SelectAlbumActivity.this, getResources().getQuantityString(R.plurals.select_album_n_songs_unpinned, songs.size(), songs.size()));
 			getDownloadService().unpin(songs);
 		}
@@ -1101,7 +1102,8 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 					if (header != null)
 					{
-						albumListView.addHeaderView(header, null, false);
+						// FIXME:!!!
+						//albumGridView.addHeaderView(header, null, false);
 					}
 				}
 
@@ -1180,7 +1182,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 				shareButton.setVisible(shareButtonVisible);
 			}
 
-			albumListView.setAdapter(new EntryAdapter(SelectAlbumActivity.this, getImageLoader(), entries, true));
+			albumGridView.setAdapter(new EntryAdapter(SelectAlbumActivity.this, getImageLoader(), entries, true));
 			licenseValid = result.getSecond();
 
 			boolean playAll = getIntent().getBooleanExtra(Constants.INTENT_EXTRA_NAME_AUTOPLAY, false);
@@ -1192,9 +1194,10 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 
 		protected View createHeader(List<MusicDirectory.Entry> entries, CharSequence name, int songCount)
 		{
-			ImageView coverArtView = (ImageView) header.findViewById(R.id.select_album_art);
+			ImageHolder coverArtHolder = new ImageHolder();
+			coverArtHolder.addImageView((ImageView) header.findViewById(R.id.select_album_art));
 			int artworkSelection = random.nextInt(entries.size());
-			getImageLoader().loadImage(coverArtView, entries.get(artworkSelection), false, Util.getAlbumImageSize(SelectAlbumActivity.this), false, true);
+			getImageLoader().loadImage(coverArtHolder, entries.get(artworkSelection), false, Util.getAlbumImageSize(SelectAlbumActivity.this), false, true);
 
 			AlbumHeader albumHeader = AlbumHeader.processEntries(SelectAlbumActivity.this, entries);
 
@@ -1246,7 +1249,7 @@ public class SelectAlbumActivity extends SubsonicTabActivity
 		@Override
 		protected void onPostExecute(String[] result)
 		{
-			refreshAlbumListView.onRefreshComplete();
+			refreshAlbumGridView.onRefreshComplete();
 			super.onPostExecute(result);
 		}
 

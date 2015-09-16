@@ -23,17 +23,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncTask;
-import android.os.Bundle;
-import android.telephony.PhoneStateListener;
-import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.view.KeyEvent;
 
 import com.thejoshwa.ultrasonic.androidapp.domain.MusicDirectory;
-import com.thejoshwa.ultrasonic.androidapp.domain.PlayerState;
 import com.thejoshwa.ultrasonic.androidapp.util.CacheCleaner;
 import com.thejoshwa.ultrasonic.androidapp.util.FileUtil;
-import com.thejoshwa.ultrasonic.androidapp.util.Util;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -56,51 +50,10 @@ public class DownloadServiceLifecycleSupport
 
 	private final DownloadServiceImpl downloadService;
 	private ScheduledExecutorService executorService;
-	private BroadcastReceiver headsetEventReceiver;
 	private BroadcastReceiver ejectEventReceiver;
-	private PhoneStateListener phoneStateListener;
 	private boolean externalStorageAvailable = true;
 	private Lock lock = new ReentrantLock();
 	private final AtomicBoolean setup = new AtomicBoolean(false);
-
-	/**
-	 * This receiver manages the intent that could come from other applications.
-	 */
-	private BroadcastReceiver intentReceiver = new BroadcastReceiver()
-	{
-		@Override
-		public void onReceive(Context context, Intent intent)
-		{
-			String action = intent.getAction();
-			Log.i(TAG, "intentReceiver.onReceive: " + action);
-			if (DownloadServiceImpl.CMD_PLAY.equals(action))
-			{
-				downloadService.play();
-			}
-			else if (DownloadServiceImpl.CMD_NEXT.equals(action))
-			{
-				downloadService.next();
-			}
-			else if (DownloadServiceImpl.CMD_PREVIOUS.equals(action))
-			{
-				downloadService.previous();
-			}
-			else if (DownloadServiceImpl.CMD_TOGGLEPAUSE.equals(action))
-			{
-				downloadService.togglePlayPause();
-			}
-			else if (DownloadServiceImpl.CMD_PAUSE.equals(action))
-			{
-				downloadService.pause();
-			}
-			else if (DownloadServiceImpl.CMD_STOP.equals(action))
-			{
-				downloadService.pause();
-				downloadService.seekTo(0);
-			}
-		}
-	};
-
 
 	public DownloadServiceLifecycleSupport(DownloadServiceImpl downloadService)
 	{
@@ -128,31 +81,6 @@ public class DownloadServiceLifecycleSupport
 		executorService = Executors.newSingleThreadScheduledExecutor();
 		executorService.scheduleWithFixedDelay(downloadChecker, 5, 5, TimeUnit.SECONDS);
 
-		// Pause when headset is unplugged.
-		headsetEventReceiver = new BroadcastReceiver()
-		{
-			@Override
-			public void onReceive(Context context, Intent intent)
-			{
-				Bundle extras = intent.getExtras();
-
-				if (extras == null)
-				{
-					return;
-				}
-
-				Log.i(TAG, String.format("Headset event for: %s", extras.get("name")));
-				if (extras.getInt("state") == 0)
-				{
-					if (!downloadService.isJukeboxEnabled())
-					{
-						downloadService.pause();
-					}
-				}
-			}
-		};
-		downloadService.registerReceiver(headsetEventReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
-
 		// Stop when SD card is ejected.
 		ejectEventReceiver = new BroadcastReceiver()
 		{
@@ -163,7 +91,7 @@ public class DownloadServiceLifecycleSupport
 				if (!externalStorageAvailable)
 				{
 					Log.i(TAG, "External media is ejecting. Stopping playback.");
-					downloadService.reset();
+					MediaPlayer.getInstance().reset();
 				}
 				else
 				{
@@ -176,42 +104,9 @@ public class DownloadServiceLifecycleSupport
 		ejectFilter.addDataScheme("file");
 		downloadService.registerReceiver(ejectEventReceiver, ejectFilter);
 
-		// React to media buttons.
-		Util.registerMediaButtonEventReceiver(downloadService);
-
-		// Pause temporarily on incoming phone calls.
-		phoneStateListener = new MyPhoneStateListener();
-		TelephonyManager telephonyManager = (TelephonyManager) downloadService.getSystemService(Context.TELEPHONY_SERVICE);
-		telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
-
-		// Register the handler for outside intents.
-		IntentFilter commandFilter = new IntentFilter();
-		commandFilter.addAction(DownloadServiceImpl.CMD_PLAY);
-		commandFilter.addAction(DownloadServiceImpl.CMD_TOGGLEPAUSE);
-		commandFilter.addAction(DownloadServiceImpl.CMD_PAUSE);
-		commandFilter.addAction(DownloadServiceImpl.CMD_STOP);
-		commandFilter.addAction(DownloadServiceImpl.CMD_PREVIOUS);
-		commandFilter.addAction(DownloadServiceImpl.CMD_NEXT);
-		downloadService.registerReceiver(intentReceiver, commandFilter);
-
-		int instance = Util.getActiveServer(downloadService);
-		downloadService.setJukeboxEnabled(Util.getJukeboxEnabled(downloadService, instance));
-
 		deserializeDownloadQueue();
 
 		new CacheCleaner(downloadService, downloadService).clean();
-	}
-
-	public void onStart(Intent intent)
-	{
-		if (intent != null && intent.getExtras() != null)
-		{
-			KeyEvent event = (KeyEvent) intent.getExtras().get(Intent.EXTRA_KEY_EVENT);
-			if (event != null)
-			{
-				handleKeyEvent(event);
-			}
-		}
 	}
 
 	public void onDestroy()
@@ -220,11 +115,6 @@ public class DownloadServiceLifecycleSupport
 		serializeDownloadQueueNow();
 		downloadService.clear(false);
 		downloadService.unregisterReceiver(ejectEventReceiver);
-		downloadService.unregisterReceiver(headsetEventReceiver);
-		downloadService.unregisterReceiver(intentReceiver);
-
-		TelephonyManager telephonyManager = (TelephonyManager) downloadService.getSystemService(Context.TELEPHONY_SERVICE);
-		telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
 	}
 
 	public boolean isExternalStorageAvailable()
@@ -244,14 +134,14 @@ public class DownloadServiceLifecycleSupport
 
 	public void serializeDownloadQueueNow()
 	{
-		Iterable<DownloadFile> songs = new ArrayList<DownloadFile>(downloadService.getSongs());
+		Iterable<DownloadFile> songs = new ArrayList<DownloadFile>(MediaPlayer.getInstance().getPlayQueue());
 		State state = new State();
 		for (DownloadFile downloadFile : songs)
 		{
 			state.songs.add(downloadFile.getSong());
 		}
-		state.currentPlayingIndex = downloadService.getCurrentPlayingIndex();
-		state.currentPlayingPosition = downloadService.getPlayerPosition();
+		state.currentPlayingIndex = MediaPlayer.getInstance().getCurrentPlayingIndex();
+		state.currentPlayingPosition = MediaPlayer.getInstance().getPlayerPosition();
 
 		Log.i(TAG, String.format("Serialized currentPlayingIndex: %d, currentPlayingPosition: %d", state.currentPlayingIndex, state.currentPlayingPosition));
 		FileUtil.serialize(downloadService, state, FILENAME_DOWNLOADS_SER);
@@ -270,83 +160,10 @@ public class DownloadServiceLifecycleSupport
 			return;
 		}
 		Log.i(TAG, "Deserialized currentPlayingIndex: " + state.currentPlayingIndex + ", currentPlayingPosition: " + state.currentPlayingPosition);
-		downloadService.restore(state.songs, state.currentPlayingIndex, state.currentPlayingPosition, false, false);
+		MediaPlayer.getInstance().restore(state.songs, state.currentPlayingIndex, state.currentPlayingPosition, false, false);
 
 		// Work-around: Serialize again, as the restore() method creates a serialization without current playing info.
 		serializeDownloadQueue();
-	}
-
-	private void handleKeyEvent(KeyEvent event)
-	{
-		if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() > 0)
-		{
-			return;
-		}
-
-		switch (event.getKeyCode())
-		{
-			case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-			case KeyEvent.KEYCODE_HEADSETHOOK:
-				downloadService.togglePlayPause();
-				break;
-			case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-				downloadService.previous();
-				break;
-			case KeyEvent.KEYCODE_MEDIA_NEXT:
-				if (downloadService.getCurrentPlayingIndex() < downloadService.size() - 1)
-				{
-					downloadService.next();
-				}
-				break;
-			case KeyEvent.KEYCODE_MEDIA_STOP:
-				downloadService.stop();
-				break;
-			case KeyEvent.KEYCODE_MEDIA_PLAY:
-				if (downloadService.getPlayerState() != PlayerState.STARTED)
-				{
-					downloadService.start();
-				}
-				break;
-			case KeyEvent.KEYCODE_MEDIA_PAUSE:
-				downloadService.pause();
-				break;
-			default:
-				break;
-		}
-	}
-
-	/**
-	 * Logic taken from packages/apps/Music.  Will pause when an incoming
-	 * call rings or if a call (incoming or outgoing) is connected.
-	 */
-	private class MyPhoneStateListener extends PhoneStateListener
-	{
-		private boolean resumeAfterCall;
-
-		@Override
-		public void onCallStateChanged(int state, String incomingNumber)
-		{
-			switch (state)
-			{
-				case TelephonyManager.CALL_STATE_RINGING:
-				case TelephonyManager.CALL_STATE_OFFHOOK:
-					if (downloadService.getPlayerState() == PlayerState.STARTED && !downloadService.isJukeboxEnabled())
-					{
-						resumeAfterCall = true;
-						downloadService.pause();
-					}
-					break;
-				case TelephonyManager.CALL_STATE_IDLE:
-					if (resumeAfterCall)
-					{
-						resumeAfterCall = false;
-						downloadService.start();
-					}
-					break;
-				default:
-					break;
-			}
-		}
 	}
 
 	private static class State implements Serializable

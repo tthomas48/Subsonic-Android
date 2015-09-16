@@ -18,17 +18,6 @@
  */
 package com.thejoshwa.ultrasonic.androidapp.service;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
 import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
@@ -44,6 +33,17 @@ import com.thejoshwa.ultrasonic.androidapp.domain.PlayerState;
 import com.thejoshwa.ultrasonic.androidapp.service.parser.SubsonicRESTException;
 import com.thejoshwa.ultrasonic.androidapp.util.Util;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * Provides an asynchronous interface to the remote jukebox on the Subsonic server.
  *
@@ -58,7 +58,6 @@ public class JukeboxService
 
 	private final Handler handler = new Handler();
 	private final TaskQueue tasks = new TaskQueue();
-	private final DownloadServiceImpl downloadService;
 	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 	private ScheduledFuture<?> statusUpdateFuture;
 	private final AtomicLong timeOfLastUpdate = new AtomicLong();
@@ -73,11 +72,6 @@ public class JukeboxService
 	// TODO: Disable repeat.
 	// TODO: Persist RC state?
 	// TODO: Minimize status updates.
-
-	public JukeboxService(DownloadServiceImpl downloadService)
-	{
-		this.downloadService = downloadService;
-	}
 
 	public void startJukeboxService()
 	{
@@ -149,7 +143,7 @@ public class JukeboxService
 
 			try
 			{
-				if (!Util.isOffline(downloadService))
+				if (!Util.isOffline((DownloadServiceImpl) DownloadServiceImpl.getInstance()))
 				{
 					task = tasks.take();
 					JukeboxStatus status = task.execute();
@@ -177,10 +171,26 @@ public class JukeboxService
 		// Track change?
 		Integer index = jukeboxStatus.getCurrentPlayingIndex();
 
-		if (index != null && index != -1 && index != downloadService.getCurrentPlayingIndex())
-		{
-			downloadService.setCurrentPlaying(index);
+		if (jukeboxStatus.getPlaylist().getChildren().size() == 0) {
+
 		}
+
+		for (int i = 0, il = jukeboxStatus.getPlaylist().getChildren().size(); i < il; i++) {
+			if (MediaPlayer.getInstance().getPlayQueue().size() - 1 < i || MediaPlayer.getInstance().getPlayQueue().get(i).getSong().getId().equals(jukeboxStatus.getPlaylist().getChildren().get(i).getId()) == false) {
+				MediaPlayer.getInstance().setPlayQueue(jukeboxStatus.getPlaylist(), false);
+				break;
+			}
+		}
+
+		if (index != null && index != -1 && index != MediaPlayer.getInstance().getCurrentPlayingIndex())
+		{
+			MediaPlayer.getInstance().setCurrentPlaying(index);
+		}
+		boolean playing = jukeboxStatus.isPlaying();
+		if (playing && MediaPlayer.getInstance().getPlayerState() != PlayerState.STARTED) {
+			MediaPlayer.getInstance().setPlayerState(PlayerState.STARTED);
+		}
+
 	}
 
 	private void onError(JukeboxTask task, Throwable x)
@@ -212,27 +222,38 @@ public class JukeboxService
 			@Override
 			public void run()
 			{
-				Util.toast(downloadService, resourceId, false);
+				Util.toast(MediaPlayer.getInstance(), resourceId, false);
 			}
 		});
 
-		downloadService.setJukeboxEnabled(false);
+		MediaPlayer.getInstance().setJukeboxEnabled(false);
 	}
 
 	public void updatePlaylist()
 	{
+
 		tasks.remove(Skip.class);
 		tasks.remove(Stop.class);
 		tasks.remove(Start.class);
 
 		List<String> ids = new ArrayList<String>();
-		for (DownloadFile file : downloadService.getDownloads())
+		for (DownloadFile file : MediaPlayer.getInstance().getPlayQueue())
 		{
 			ids.add(file.getSong().getId());
 		}
 
 		tasks.add(new SetPlaylist(ids));
 	}
+
+	public void getPlaylist()
+	{
+		tasks.remove(Skip.class);
+		tasks.remove(Stop.class);
+		tasks.remove(Start.class);
+
+		tasks.add(new GetPlaylist());
+	}
+
 
 	public void skip(final int index, final int offsetSeconds)
 	{
@@ -248,7 +269,7 @@ public class JukeboxService
 		}
 
 		tasks.add(new Skip(index, offsetSeconds));
-		downloadService.setPlayerState(PlayerState.STARTED);
+		MediaPlayer.getInstance().setPlayerState(PlayerState.STARTED);
 	}
 
 	public void stop()
@@ -282,14 +303,14 @@ public class JukeboxService
 
 		if (volumeToast == null)
 		{
-			volumeToast = new VolumeToast(downloadService);
+			volumeToast = new VolumeToast(MediaPlayer.getInstance());
 		}
 		volumeToast.setVolume(gain);
 	}
 
 	private MusicService getMusicService()
 	{
-		return MusicServiceFactory.getMusicService(downloadService);
+		return MusicServiceFactory.getMusicService(MediaPlayer.getInstance());
 	}
 
 	public int getPositionSeconds()
@@ -312,14 +333,14 @@ public class JukeboxService
 	{
 		tasks.clear();
 
-		if (enabled)
-		{
-			updatePlaylist();
+		if (enabled) {
+			getPlaylist();
+			startStatusUpdate();
+		} else {
+			stopStatusUpdate();
 		}
 
-		stop();
-
-		downloadService.setPlayerState(PlayerState.IDLE);
+		//MediaPlayer.getInstance().setPlayerState(PlayerState.IDLE);
 	}
 	
 	private static class TaskQueue
@@ -380,7 +401,7 @@ public class JukeboxService
 		@Override
 		JukeboxStatus execute() throws Exception
 		{
-			return getMusicService().getJukeboxStatus(downloadService, null);
+			return getMusicService().getJukeboxStatus(MediaPlayer.getInstance(), null);
 		}
 	}
 
@@ -396,9 +417,23 @@ public class JukeboxService
 		@Override
 		JukeboxStatus execute() throws Exception
 		{
-			return getMusicService().updateJukeboxPlaylist(ids, downloadService, null);
+			return getMusicService().updateJukeboxPlaylist(ids, MediaPlayer.getInstance(), null);
 		}
 	}
+
+	private class GetPlaylist extends JukeboxTask
+	{
+		GetPlaylist()
+		{
+		}
+
+		@Override
+		JukeboxStatus execute() throws Exception
+		{
+			return getMusicService().getJukeboxPlaylist(MediaPlayer.getInstance(), null);
+		}
+	}
+
 
 	private class Skip extends JukeboxTask
 	{
@@ -414,7 +449,7 @@ public class JukeboxService
 		@Override
 		JukeboxStatus execute() throws Exception
 		{
-			return getMusicService().skipJukebox(index, offsetSeconds, downloadService, null);
+			return getMusicService().skipJukebox(index, offsetSeconds, MediaPlayer.getInstance(), null);
 		}
 	}
 
@@ -423,7 +458,7 @@ public class JukeboxService
 		@Override
 		JukeboxStatus execute() throws Exception
 		{
-			return getMusicService().stopJukebox(downloadService, null);
+			return getMusicService().stopJukebox(MediaPlayer.getInstance(), null);
 		}
 	}
 
@@ -432,7 +467,7 @@ public class JukeboxService
 		@Override
 		JukeboxStatus execute() throws Exception
 		{
-			return getMusicService().startJukebox(downloadService, null);
+			return getMusicService().startJukebox(MediaPlayer.getInstance(), null);
 		}
 	}
 
@@ -449,7 +484,7 @@ public class JukeboxService
 		@Override
 		JukeboxStatus execute() throws Exception
 		{
-			return getMusicService().setJukeboxGain(gain, downloadService, null);
+			return getMusicService().setJukeboxGain(gain, MediaPlayer.getInstance(), null);
 		}
 	}
 
